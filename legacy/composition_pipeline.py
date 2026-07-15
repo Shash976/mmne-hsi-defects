@@ -42,7 +42,7 @@ from unsupervised_defect import (
     DEFAULT_DATA_DIR, DEFAULT_WHITE_REF, DEFAULT_DARK_REF,
     find_pairs, load_cube_with_shutter, saturated_pixel_mask, load_reference_spectrum,
     calibrate_to_reflectance, fit_segmenter, foreground_mask, pool_background, pseudo_rgb,
-    detrend_plane_masked, local_stats_masked,
+    detrend_plane_masked, local_stats_masked, snv,
 )
 
 DEFAULT_OUT_DIR = "out/composition"
@@ -323,8 +323,12 @@ def main():
             local_mean, local_std, _ = local_stats_masked(plane_detrended, mask, args.window)
             detrended[sample_id][roi_num] = (plane_detrended - local_mean) / local_std
 
-    # --- LIG pixel pool (ROI-1 scans define the reference population, as in unsupervised_defect.py). ---
-    roi1_lig_pixels = [detrended[s][1].reshape(-1, detrended[s][1].shape[-1])[masks[s][1].ravel()]
+    # --- LIG pixel pool (ROI-1 scans define the reference population, as in unsupervised_defect.py).
+    #     SNV (per-pixel mean/std normalization across bands) removes overall brightness/albedo --
+    #     confirmed by direct test that PCA's PC1 was otherwise ~100% correlated with per-pixel
+    #     brightness (50% of variance, uniform-sign loadings across all bands) and dominated the
+    #     K-means clustering, i.e. classification was riding brightness rather than spectral shape. ---
+    roi1_lig_pixels = [snv(detrended[s][1].reshape(-1, detrended[s][1].shape[-1])[masks[s][1].ravel()])
                        for s in samples]
     pooled_lig = pool_background(roi1_lig_pixels, max_per_image=args.max_per_image)
     print(f"Pooled LIG pixels for classification: {pooled_lig.shape[0]} x {pooled_lig.shape[1]} bands")
@@ -359,7 +363,7 @@ def main():
                 raw_labels_flat = abundances.argmax(axis=1)
                 deviation_flat = 1.0 - abundances.max(axis=1)  # low max abundance = poor fit to any endmember
             else:
-                flat = detrended[sample_id][roi_num].reshape(-1, cube.shape[-1])
+                flat = snv(detrended[sample_id][roi_num].reshape(-1, cube.shape[-1]))
                 raw_labels_flat, deviation_flat = classify_pixels(flat, pca, km)
 
             raw_labels = raw_labels_flat.reshape(cube.shape[:2])

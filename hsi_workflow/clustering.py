@@ -1,0 +1,110 @@
+"""Stages 6-7 -- Unsupervised clustering + spatial mapping.
+
+Replaces the old reference-spectra + linear-unmixing step. We cluster the PCA
+scores to find naturally occurring spectral populations, then project the labels
+back onto the image to get a cluster map. Clusters are *spectral populations
+only* -- we deliberately do not name them "vacancy", "crack", etc.
+
+Adding a new algorithm = adding one entry to ``_CLUSTERERS``; the orchestrator
+and CLIs are untouched.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable, Dict, Optional
+
+import numpy as np
+
+from .config import ClusterConfig
+
+
+@dataclass
+class ClusterResult:
+    """Labels + fit metadata. ``-1`` denotes noise/unassigned (DBSCAN)."""
+
+    labels: np.ndarray               # (n_samples,) int cluster id per sample
+    method: str
+    n_clusters: int
+
+
+# --------------------------------------------------------------------------
+# Registry: name -> function(features, cfg) -> labels
+# --------------------------------------------------------------------------
+
+def _kmeans(features: np.ndarray, cfg: ClusterConfig) -> np.ndarray:
+    from sklearn.cluster import KMeans
+    km = KMeans(n_clusters=cfg.n_clusters, n_init=10, random_state=cfg.seed)
+    return km.fit_predict(features)
+
+
+def _dbscan(features: np.ndarray, cfg: ClusterConfig) -> np.ndarray:
+    from sklearn.cluster import DBSCAN
+    db = DBSCAN(eps=cfg.dbscan_eps, min_samples=cfg.dbscan_min_samples)
+    return db.fit_predict(features)
+
+
+def _gmm(features: np.ndarray, cfg: ClusterConfig) -> np.ndarray:
+    from sklearn.mixture import GaussianMixture
+    gm = GaussianMixture(n_components=cfg.n_clusters, random_state=cfg.seed)
+    return gm.fit_predict(features)
+
+
+_CLUSTERERS: Dict[str, Callable[[np.ndarray, ClusterConfig], np.ndarray]] = {
+    "kmeans": _kmeans,
+    "dbscan": _dbscan,
+    "gmm": _gmm,
+}
+
+
+def cluster(features: np.ndarray, cfg: ClusterConfig) -> ClusterResult:
+    """Cluster (n_samples, n_features) rows -- usually PCA scores -- per ``cfg``."""
+    cfg.validate()
+    labels = _CLUSTERERS[cfg.method](features, cfg)
+    n = len(set(labels.tolist()) - {-1})
+    return ClusterResult(labels=labels, method=cfg.method, n_clusters=n)
+
+
+def cluster_map(result: ClusterResult, shape, mask: Optional[np.ndarray] = None) -> np.ndarray:
+    """Reshape flat labels back to a (rows, cols) map.
+
+    ``mask`` (foreground) is where the labels apply; off-mask pixels get ``-1``.
+    When given, ``len(result.labels)`` must equal ``mask.sum()``.
+    """
+    rows, cols = shape
+    out = np.full(rows * cols, -1, dtype=int)
+    if mask is None:
+        out[:] = result.labels
+    else:
+        out[mask.reshape(-1)] = result.labels
+    return out.reshape(rows, cols)
+
+
+# --------------------------------------------------------------------------
+# Cluster-quality metrics (Stage 7 deliverable)
+# --------------------------------------------------------------------------
+
+def cluster_metrics(features: np.ndarray, labels: np.ndarray,
+                    max_samples: int = 20_000, seed: int = 0) -> dict:
+    """Silhouette / Davies-Bouldin / Calinski-Harabasz on a subsample.
+
+    Metrics need >=2 clusters and are O(n^2) (silhouette), hence the subsample.
+    Noise points (label -1) are dropped before scoring.
+    """
+    from sklearn.metrics import (silhouette_score, davies_bouldin_score,
+                                 calinski_harabasz_score)
+    keep = labels != -1
+    X, y = features[keep], labels[keep]
+    if len(set(y.tolist())) < 2:
+        return {"silhouette": float("nan"), "davies_bouldin": float("nan"),
+                "calinski_harabasz": float("nan"), "n_clusters": len(set(y.tolist()))}
+    if X.shape[0] > max_samples:
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(X.shape[0], max_samples, replace=False)
+        X, y = X[idx], y[idx]
+    return {
+        "silhouette": float(silhouette_score(X, y)),
+        "davies_bouldin": float(davies_bouldin_score(X, y)),
+        "calinski_harabasz": float(calinski_harabasz_score(X, y)),
+        "n_clusters": len(set(y.tolist())),
+    }

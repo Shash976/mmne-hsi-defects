@@ -134,6 +134,42 @@ samples. This needs a domain check, not a code fix -- it could be a real
 device feature (a contact via, fiducial mark) rather than a defect. Compare
 against the actual device layout before treating it as an anomaly.
 
+**Important, confirmed-by-direct-test finding: without SNV, this was mostly
+classifying brightness, not spectral shape.** A direct check (correlate PC1
+against per-pixel mean reflectance) showed PC1 explained 50% of variance,
+correlated 0.999 with overall pixel brightness, and had uniform-sign loadings
+across all 300 bands -- the exact signature of an albedo/intensity axis, not
+a spectral absorption feature. PCA+K-means was effectively clustering on
+"bright vs. dark," equivalent to what a grayscale/RGB-based method would do,
+which defeats the point of using a hyperspectral cube. Per-pixel SNV
+normalization (`snv()`, already used in `unsupervised_defect.py`) is now
+applied before PCA specifically to force classification onto relative
+spectral shape instead. Note that the RX anomaly detector in
+`unsupervised_defect.py` did **not** have this flaw -- Mahalanobis distance
+whitens by the full covariance, so no single high-variance direction (like
+brightness) can dominate the way it dominates a truncated, non-whitened PCA
+space feeding K-means.
+
+**After removing brightness (SNV) and boundary-mixed pixels (deeper erosion,
+`--erode 4`), the silhouette score for k=2 drops to ~0.03 and every sample
+splits ~50/50** -- the signature of K-means splitting noise, not a real
+class boundary. Put together, this is an honest, data-driven conclusion, not
+a bug: **the interior LIG material does not show a strong large-scale
+spectral-shape signal for PCA+K-means to find at this resolution.** Whatever
+defects exist here are more likely rare, spatially localized outliers (what
+`unsupervised_defect.py`'s RX detector is built to find, and where the actual
+validated evidence in this project lives so far -- e.g. the C_E08 hotspot,
+the ROI-2 score-histogram separation) rather than large, distinguishable
+material sub-phases (what PCA+K-means classification is suited to find).
+Treat the RX anomaly detector as the primary defect-detection tool for this
+dataset; treat `composition_pipeline.py`'s classification as a (so far
+negative, but honestly negative) check for broader compositional
+heterogeneity, not a source of defect calls on its own. If you want to keep
+pushing on composition classification, the more promising next lever is
+almost certainly higher spatial resolution or a different modality (thin
+traces here are only ~4-6px wide -- too thin for interior-only pixels to
+survive boundary-exclusion at all), not more parameter tuning on this data.
+
 Outputs: `out/composition/<sample>/*_composition.png` (RGB / raw & filtered
 class maps / deviation map / defect map), `*_upsampled.png`.
 

@@ -1,0 +1,58 @@
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Virtualenv / IDE
+.idea/
+.vscode/
+
+# Testing / linting / type checking
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data science / outputs
+
+datasets/
+raw_data/
+processed_data/
+models/
+checkpoints/
+outputs/
+runs/
+logs/
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.npz
+*.npy
+*.pt
+*.pth
+
+# Image processing artifacts
+*.tif
+*.tiff
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+
+# Misc
+*.log

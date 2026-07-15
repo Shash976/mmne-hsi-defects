@@ -1,0 +1,2 @@
+region_id,area,perimeter,compactness,centroid_row,centroid_col,mean_reflectance,spectral_variance,baseline_distance,mean_anomaly
+1,2524,413.00209204105306,0.18594937007603557,30.024960380348652,31.832805071315374,0.0,0.09422863732157898,139.39984644325443,0.6926190245756396
