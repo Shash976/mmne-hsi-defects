@@ -10,27 +10,44 @@ The three entry points map to phases of the pipeline.
 
 ---
 
-## `run_extract` — pieces + ROIs
+## `run_extract` — organize into a piece/ROI dataset
 
-Splits each scan into pieces, tiles ROIs, and writes the cross-specimen ROI table.
+Splits each scan into pieces, tiles ROIs, and writes a **hierarchical on-disk
+dataset**: one folder per piece, each with the cropped piece cube and a `rois/`
+subfolder of individual cropped ROI cubes, plus metadata.
 
 ```bash
-python -m hsi_workflow.run_extract --dataset sio2_bare_si --figures --save-crops
+python -m hsi_workflow.run_extract --dataset sio2_bare_si
+python -m hsi_workflow.run_extract --dataset sio2_dish_white_20 --radiometry raw --no-roi-cubes
 ```
 
 | Argument | Default | Meaning |
 |---|---|---|
 | `--dataset` | `sio2_bare_si` | Which preset to process |
+| `--radiometry` | `reflectance` | Save cropped cubes as calibrated reflectance or `raw` DN |
 | `--piece-method` | `sam` | Foreground backend (`sam`/`mahalanobis`/`kmeans`) |
 | `--min-area` | `1000` | Minimum piece size (px) |
 | `--patch` / `--stride` | `32` / `32` | ROI patch size and step |
 | `--min-coverage` | `0.85` | Fraction of a patch that must be in-mask |
-| `--save-crops` | off | Persist each piece as an ENVI cube |
-| `--figures` | off | Save a Stage-4 figure per piece |
+| `--no-roi-cubes` | off | Skip per-ROI cubes (keep folders + `roi_index.csv`) |
 | `--out` | `out/workflow/extract` | Output root |
 
-**Outputs** (`out/workflow/extract/<dataset>/`): `roi_table.csv` (+ `.parquet`),
-optional `pieces/` crops, optional `figures/`. Prints per-piece pixel and ROI counts.
+**Output tree** (`out/workflow/extract/<dataset>/`):
+
+```
+manifest.json                 # dataset index (pieces, counts, material)
+roi_table.csv                 # aggregated ML table (mean spectra + scalar features)
+<piece_id>/
+    <piece_id>.hdr / .img     # cropped piece cube (ENVI, reflectance by default)
+    <piece_id>_mask.npy       # fragment footprint
+    meta.json                 # material, bbox-in-scan, shape, counts
+    roi_index.csv             # one row per ROI in this piece
+    rois/
+        <roi_id>.hdr / .img   # cropped ROI sub-cube
+```
+
+Every cube is a standard ENVI pair (wavelengths preserved) — reload with
+`hsi_workflow.io.load_cube`. See [extraction.md](extraction.md#on-disk-dataset-layout).
 
 ---
 
@@ -94,14 +111,21 @@ Prints a per-piece summary: silhouette, #clusters, anomalous fraction, #regions.
 
 ### The 6-panel analysis figure
 
+The header shows the piece id, material, anomalous fraction, region count, and
+silhouette. Panels (dark = off-piece):
+
 | Panel | What to look for |
 |---|---|
-| pseudo-RGB | orientation — where the piece and its features are |
-| PC1–3 (RGB) | broad spectral structure; smooth = homogeneous film |
-| cluster map | spatially coherent color bands = distinct spectral populations |
-| anomaly heatmap | bright = unusual; should be sparse/localized |
-| flagged regions | the cleaned anomalies overlaid on the piece |
-| PC1 score map | dominant mode of variation across the piece |
+| Spectral structure (PC1–3) | broad spectral variation as false colour; smooth = homogeneous film |
+| Clusters | discrete spectral populations, with a legend; coherent bands are good |
+| Anomaly score | bright = unusual; should be sparse and localized |
+| Flagged anomalies | regions **outlined in red and numbered** (numbers match the region CSV) |
+| **Mean spectrum: normal vs anomalous** | *the payoff* — how the flagged spectra differ in shape from the film |
+| Anomaly score distribution | histogram with the flag threshold; the tail past the line is what gets flagged |
+
+The mean-spectrum panel is the one to read first when asking "is this a real
+anomaly?" — a genuine anomaly shows a distinct spectral shape (a shifted peak, a
+dip), not just noise.
 
 ### The region table (`<piece>_regions.csv`)
 

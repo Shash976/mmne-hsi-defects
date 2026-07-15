@@ -14,6 +14,7 @@ stages in order. You can retune or replace any stage in isolation.
 | [`preprocessing.py`](../hsi_workflow/preprocessing.py) | Stages 2–3 — calibrate, Savitzky-Golay, baseline, SNV |
 | [`segmentation.py`](../hsi_workflow/segmentation.py) | 2-cluster KMeans film/substrate split (helper) |
 | [`rois.py`](../hsi_workflow/rois.py) | Fixed-patch ROI tiling → ML table + specimen split |
+| [`dataset.py`](../hsi_workflow/dataset.py) | Export the hierarchical specimen→piece→ROI folder tree on disk |
 | [`explore.py`](../hsi_workflow/explore.py) | Stage 4 — exploratory figures |
 | [`decomposition.py`](../hsi_workflow/decomposition.py) | Stage 5 — PCA |
 | [`clustering.py`](../hsi_workflow/clustering.py) | Stages 6–7 — clustering registry + maps + metrics |

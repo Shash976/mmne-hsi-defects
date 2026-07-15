@@ -1,0 +1,3 @@
+roi_id,r0,r1,c0,c1,coverage,spectral_variance
+bare silicon all_p04_r0001,32,64,32,64,1.0,0.013862195021820399
+bare silicon all_p04_r0002,32,64,64,96,0.90234375,0.012824055012652243

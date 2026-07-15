@@ -18,7 +18,7 @@ import numpy as np
 
 from .config import DATASETS, WorkflowConfig, DEFAULT_BASELINE
 from .pipeline import run_workflow
-from .viz import save_pca_summary, save_analysis_maps, pseudo_rgb
+from .viz import save_pca_summary, save_analysis_figure
 
 DEFAULT_OUT = os.path.join("out", "workflow", "analyze")
 
@@ -63,13 +63,12 @@ def main():
                      res.analyses[0].piece.wavelengths, out_dir)
 
     primary = wf.anomaly.methods[0]
+    threshold = res.baseline_thresholds[primary]
     print("\n{:<22} {:>10} {:>10} {:>12} {:>10}".format(
         "piece_id", "silhouette", "n_clust", "anom_frac", "n_regions"))
     for a in res.analyses:
         piece = a.piece
-        rgb = pseudo_rgb(piece.data, piece.wavelengths)
-        save_analysis_maps(piece.piece_id, rgb, a.pc_score_image, a.cluster_map,
-                           a.anomaly_maps[primary], a.flagged, out_dir)
+        save_analysis_figure(a, primary, threshold, out_dir)
         if len(a.region_table):
             a.region_table.to_csv(os.path.join(out_dir, f"{piece.piece_id}_regions.csv"), index=False)
         anom_frac = float(a.flagged.sum()) / max(1, int(piece.mask.sum()))

@@ -1,0 +1,189 @@
+{
+  "dataset": "sio2_bare_si",
+  "material": "silicon",
+  "radiometry": "reflectance",
+  "n_pieces": 9,
+  "n_rois": 20,
+  "pieces": [
+    {
+      "piece_id": "bare silicon all_p01",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        188,
+        508,
+        159,
+        347
+      ],
+      "shape": [
+        320,
+        188,
+        300
+      ],
+      "n_foreground_px": 23358,
+      "n_rois": 11,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p02",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        80,
+        163,
+        293,
+        431
+      ],
+      "shape": [
+        83,
+        138,
+        300
+      ],
+      "n_foreground_px": 6527,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p03",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        151,
+        252,
+        80,
+        141
+      ],
+      "shape": [
+        101,
+        61,
+        300
+      ],
+      "n_foreground_px": 5428,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p04",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        228,
+        316,
+        432,
+        536
+      ],
+      "shape": [
+        88,
+        104,
+        300
+      ],
+      "n_foreground_px": 4957,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p05",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        54,
+        119,
+        86,
+        192
+      ],
+      "shape": [
+        65,
+        106,
+        300
+      ],
+      "n_foreground_px": 4046,
+      "n_rois": 1,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p06",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        297,
+        392,
+        41,
+        110
+      ],
+      "shape": [
+        95,
+        69,
+        300
+      ],
+      "n_foreground_px": 3767,
+      "n_rois": 1,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p07",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        437,
+        496,
+        59,
+        166
+      ],
+      "shape": [
+        59,
+        107,
+        300
+      ],
+      "n_foreground_px": 3383,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p08",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        201,
+        254,
+        163,
+        270
+      ],
+      "shape": [
+        53,
+        107,
+        300
+      ],
+      "n_foreground_px": 2815,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "bare silicon all_p09",
+      "source_label": "bare silicon all",
+      "material": "silicon",
+      "dataset": "sio2_bare_si",
+      "bbox_in_scan": [
+        331,
+        421,
+        359,
+        408
+      ],
+      "shape": [
+        90,
+        49,
+        300
+      ],
+      "n_foreground_px": 2365,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    }
+  ]
+}

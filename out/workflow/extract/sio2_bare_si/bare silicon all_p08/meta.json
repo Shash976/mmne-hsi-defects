@@ -1,0 +1,20 @@
+{
+  "piece_id": "bare silicon all_p08",
+  "source_label": "bare silicon all",
+  "material": "silicon",
+  "dataset": "sio2_bare_si",
+  "bbox_in_scan": [
+    201,
+    254,
+    163,
+    270
+  ],
+  "shape": [
+    53,
+    107,
+    300
+  ],
+  "n_foreground_px": 2815,
+  "n_rois": 0,
+  "radiometry": "reflectance"
+}

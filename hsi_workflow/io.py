@@ -71,6 +71,24 @@ def load_dataset_cube(hdr_path: str, cfg: "DatasetConfig") -> Cube:
     return load_cube(hdr_path, material=cfg.material)
 
 
+def save_envi_cube(hdr_path: str, data: np.ndarray,
+                   wavelengths: Optional[np.ndarray] = None,
+                   material: Optional[str] = None, dtype=np.float32) -> str:
+    """Write an ndarray as an ENVI ``.hdr``/data pair (wavelengths preserved).
+
+    Used to persist cropped piece/ROI sub-cubes so the organized dataset is made
+    of standard, reloadable ENVI cubes. Returns the header path.
+    """
+    meta = {}
+    if wavelengths is not None:
+        meta["wavelength"] = [float(w) for w in wavelengths]
+        meta["wavelength units"] = "nm"
+    if material is not None:
+        meta["material"] = material
+    spectral.envi.save_image(hdr_path, np.asarray(data), metadata=meta, dtype=dtype, force=True)
+    return hdr_path
+
+
 @lru_cache(maxsize=8)
 def load_reference_spectrum(hdr_path: str):
     """Whole-frame mean spectrum + shutter time for a white/dark reference cube.

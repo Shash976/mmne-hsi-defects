@@ -26,6 +26,6 @@ Optical density (``optical_density.py``) is retained but off the default path.
 
 __all__ = [
     "config", "io", "pieces", "preprocessing", "segmentation", "rois",
-    "explore", "decomposition", "clustering", "anomaly", "postprocess",
-    "regions", "viz", "optical_density", "pipeline",
+    "dataset", "explore", "decomposition", "clustering", "anomaly",
+    "postprocess", "regions", "viz", "optical_density", "pipeline",
 ]

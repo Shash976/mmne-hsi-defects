@@ -78,8 +78,8 @@ flowchart TD
 ### Quickstart
 
 ```bash
-# 1. Extract individual pieces + tile ROIs (writes the ROI table)
-python -m hsi_workflow.run_extract  --dataset sio2_bare_si --figures
+# 1. Organize a scan into a piece/ROI folder tree (cropped cubes + ROI table)
+python -m hsi_workflow.run_extract  --dataset sio2_bare_si
 
 # 2. Stage-4 exploratory figures (reflectance mean spectra, variance maps)
 python -m hsi_workflow.run_explore  --dataset sio2_dish_white_20
@@ -88,7 +88,10 @@ python -m hsi_workflow.run_explore  --dataset sio2_dish_white_20
 python -m hsi_workflow.run_analyze  --target sio2_dish_white_20 --baseline sio2_bare_si
 ```
 
-Outputs land under `out/workflow/{extract,explore,analyze}/<dataset>/`.
+Step 1 writes `out/workflow/extract/<dataset>/<piece_id>/` folders — each with the
+cropped piece cube, a `rois/` subfolder of cropped ROI cubes, and metadata — plus a
+`manifest.json` and aggregated `roi_table.csv`. Outputs land under
+`out/workflow/{extract,explore,analyze}/<dataset>/`.
 
 > Run everything in the `hsi` conda env: `conda run -n hsi python -m hsi_workflow...`
 

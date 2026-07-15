@@ -120,3 +120,33 @@ generalize to *new* samples?" Verified to produce disjoint specimen sets.
 > **Sizing note:** the document targets ~100–300 ROIs per piece. That assumes large
 > images; small test pieces yield only a handful at 32×32. Shrink `patch` or
 > `stride` for more ROIs — see [tuning.md](tuning.md).
+
+---
+
+## On-disk dataset layout
+
+`dataset.export_dataset` (driven by `run_extract`) writes the hierarchy the
+document recommends — **specimen → piece → ROI** — so the data is organized and
+easy to modify:
+
+```
+out/workflow/extract/<dataset>/
+    manifest.json                 # dataset index: pieces, counts, material, radiometry
+    roi_table.csv                 # aggregated ML table (mean spectra + scalar features)
+    <piece_id>/
+        <piece_id>.hdr / .img     # cropped piece cube (ENVI; reflectance by default)
+        <piece_id>_mask.npy       # fragment footprint within the crop
+        meta.json                 # material, bbox-in-scan, shape, n_px, n_rois
+        roi_index.csv             # one row per ROI (id, bbox, coverage, variance)
+        rois/
+            <roi_id>.hdr / .img   # cropped ROI sub-cube
+            ...
+```
+
+- **Cubes are calibrated reflectance** by default (`--radiometry raw` keeps DN).
+  ROI *features* in the ML table are computed on SNV — the on-disk cubes stay
+  physical/reflectance so you can reprocess them however you like.
+- Everything is a standard ENVI pair with wavelengths preserved; reload with
+  `hsi_workflow.io.load_cube("<piece_id>.hdr")`.
+- `--no-roi-cubes` keeps the folders + `roi_index.csv` but skips writing the many
+  small ROI cubes (useful for the large 20-piece scan).

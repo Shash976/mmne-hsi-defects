@@ -48,11 +48,11 @@ logs/
 # Image processing artifacts
 *.tif
 *.tiff
-*.png
-*.jpg
-*.jpeg
+
 *.bmp
 *.gif
 
 # Misc
 *.log
+
+*.bip

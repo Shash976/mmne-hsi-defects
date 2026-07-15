@@ -115,45 +115,127 @@ def save_pca_summary(explained_variance_ratio: np.ndarray, loadings: np.ndarray,
     return path
 
 
-def save_analysis_maps(label: str, rgb: np.ndarray, pc_scores: np.ndarray,
-                       cluster_map: np.ndarray, anomaly_map: np.ndarray,
-                       flagged: np.ndarray, out_dir: str) -> str:
-    """Per-piece spatial deliverables: RGB, PC1-3, cluster map, anomaly heatmap,
-    flagged-region overlay. All maps are masked where off-piece (NaN / -1)."""
+_OFF = "0.12"          # dark grey for off-piece background in map panels
+
+
+def _show_map(ax, arr, cmap, title, fig, mask=None, discrete=False):
+    """imshow a masked map with a dark off-piece background + tidy colorbar."""
+    m = np.ma.masked_invalid(arr) if mask is None else np.ma.masked_where(~mask, arr)
+    cm = plt.get_cmap(cmap).copy()
+    cm.set_bad(_OFF)
+    ax.set_facecolor(_OFF)
+    im = ax.imshow(m, cmap=cm, interpolation="nearest")
+    ax.set_title(title, fontsize=11)
+    ax.axis("off")
+    if not discrete:
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
+    return im
+
+
+def save_analysis_figure(analysis, primary: str, threshold: float, out_dir: str) -> str:
+    """Interpretable 6-panel analysis figure for one piece.
+
+    ``analysis`` is a ``pipeline.PieceAnalysis``. Panels: spectral structure
+    (PC1-3), clustered populations (with legend), anomaly score map, outlined +
+    numbered flagged regions, mean spectrum of normal vs anomalous pixels, and the
+    anomaly-score histogram with the flag threshold. The spectral panel is the
+    scientific payoff -- it shows *how* the flagged regions differ.
+    """
+    from matplotlib.patches import Patch
+    from skimage.measure import find_contours
+
     os.makedirs(out_dir, exist_ok=True)
-    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    piece = analysis.piece
+    mask = piece.mask
+    data = piece.data
+    flagged = analysis.flagged
+    wl = (piece.wavelengths if piece.wavelengths is not None
+          else np.arange(data.shape[-1], dtype=float))
+    amap = analysis.anomaly_maps[primary]
+    pc = analysis.pc_score_image
 
-    axes[0, 0].imshow(rgb)
-    axes[0, 0].set_title(f"{label}\npseudo-RGB")
+    n_fg = max(1, int(mask.sum()))
+    frac = float(flagged.sum()) / n_fg
+    sil = analysis.cluster_metrics.get("silhouette", float("nan"))
+    n_reg = len(analysis.regions)
 
-    pc = pc_scores.copy()
-    lo, hi = np.nanpercentile(pc, 2), np.nanpercentile(pc, 98)
-    pc_disp = np.clip((pc[:, :, :3] - lo) / (hi - lo + 1e-12), 0, 1)
-    axes[0, 1].imshow(pc_disp)
-    axes[0, 1].set_title("PC1-3 (RGB)")
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10.5))
+    fig.suptitle(f"{piece.piece_id}   [{piece.material}]    "
+                 f"anomalous {frac:.1%}  ·  {n_reg} region(s)  ·  "
+                 f"silhouette {sil:.2f}", fontsize=14, y=0.99)
 
-    cmap_masked = np.ma.masked_where(cluster_map < 0, cluster_map)
-    im = axes[0, 2].imshow(cmap_masked, cmap="tab10")
-    axes[0, 2].set_title("cluster map")
-    fig.colorbar(im, ax=axes[0, 2], fraction=0.046)
+    # (A) spectral structure: PC1-3 as false colour, stretched, off-piece dark.
+    pc3 = pc[:, :, :3].astype(np.float64)
+    lo, hi = np.nanpercentile(pc3, 2), np.nanpercentile(pc3, 98)
+    disp = np.clip((pc3 - lo) / (hi - lo + 1e-12), 0, 1)
+    disp = np.where(mask[:, :, None], disp, np.nan)
+    axes[0, 0].set_facecolor(_OFF)
+    axes[0, 0].imshow(np.ma.masked_invalid(disp))
+    axes[0, 0].set_title("Spectral structure (PC1-3 false colour)", fontsize=11)
+    axes[0, 0].axis("off")
 
-    im = axes[1, 0].imshow(np.ma.masked_invalid(anomaly_map), cmap="inferno")
-    axes[1, 0].set_title("anomaly heatmap")
-    fig.colorbar(im, ax=axes[1, 0], fraction=0.046)
+    # (B) clusters as discrete populations + legend.
+    cmap_arr = analysis.cluster_map
+    present = sorted(int(v) for v in np.unique(cmap_arr) if v >= 0)
+    _show_map(axes[0, 1], cmap_arr.astype(float), "tab10",
+              f"Clusters ({len(present)} spectral populations)", fig,
+              mask=(cmap_arr >= 0), discrete=True)
+    tab = plt.get_cmap("tab10")
+    axes[0, 1].legend(handles=[Patch(color=tab(c % 10), label=f"cluster {c}") for c in present],
+                      fontsize=8, loc="lower right", framealpha=0.8)
 
-    axes[1, 1].imshow(rgb)
-    axes[1, 1].imshow(np.ma.masked_where(~flagged, flagged), cmap="autumn", alpha=0.6)
-    axes[1, 1].set_title("flagged anomalous regions")
+    # (C) anomaly score heatmap.
+    _show_map(axes[0, 2], amap, "inferno", f"Anomaly score ({primary})", fig, mask=mask)
 
-    single = pc_scores[:, :, 0]
-    im = axes[1, 2].imshow(np.ma.masked_invalid(single), cmap="viridis")
-    axes[1, 2].set_title("PC1 score map")
-    fig.colorbar(im, ax=axes[1, 2], fraction=0.046)
+    # (D) flagged regions outlined + numbered over a grey PC1 base.
+    base = np.where(mask, pc[:, :, 0], np.nan)
+    axes[1, 0].set_facecolor(_OFF)
+    gm = plt.get_cmap("gray").copy(); gm.set_bad(_OFF)
+    axes[1, 0].imshow(np.ma.masked_invalid(base), cmap=gm)
+    if flagged.any():
+        for contour in find_contours(flagged.astype(float), 0.5):
+            axes[1, 0].plot(contour[:, 1], contour[:, 0], color="#ff3b3b", lw=1.5)
+        for r in analysis.regions:
+            axes[1, 0].text(r.centroid[1], r.centroid[0], str(r.region_id),
+                            color="#ffe000", fontsize=9, ha="center", va="center",
+                            fontweight="bold")
+        d_title = f"Flagged anomalies ({n_reg} region(s), outlined)"
+    else:
+        axes[1, 0].text(0.5, 0.5, "no anomalies flagged", transform=axes[1, 0].transAxes,
+                        ha="center", va="center", color="white", fontsize=12)
+        d_title = "Flagged anomalies (none)"
+    axes[1, 0].set_title(d_title, fontsize=11)
+    axes[1, 0].axis("off")
 
-    for ax in axes.ravel():
-        ax.axis("off")
-    plt.tight_layout()
-    path = os.path.join(out_dir, f"{label}_analysis.png")
+    # (E) mean spectrum: normal vs anomalous -- the "why".
+    ax = axes[1, 1]
+    normal = data[mask & ~flagged]
+    if normal.size:
+        mu = normal.mean(axis=0); sd = normal.std(axis=0)
+        ax.plot(wl, mu, color="tab:blue", label=f"normal (n={normal.shape[0]})")
+        ax.fill_between(wl, mu - sd, mu + sd, color="tab:blue", alpha=0.15)
+    if flagged.any():
+        anom = data[flagged]
+        mu = anom.mean(axis=0); sd = anom.std(axis=0)
+        ax.plot(wl, mu, color="tab:red", label=f"anomalous (n={anom.shape[0]})")
+        ax.fill_between(wl, mu - sd, mu + sd, color="tab:red", alpha=0.15)
+    ax.set_title("Mean spectrum: normal vs anomalous", fontsize=11)
+    ax.set_xlabel("wavelength (nm)"); ax.set_ylabel("SNV-normalized reflectance")
+    ax.legend(fontsize=8)
+
+    # (F) anomaly score histogram with threshold.
+    ax = axes[1, 2]
+    scores = amap[mask]
+    scores = scores[np.isfinite(scores)]
+    ax.hist(scores, bins=60, color="0.6")
+    ax.axvline(threshold, color="#ff3b3b", ls="--", label=f"threshold ({threshold:.2f})")
+    ax.set_title("Anomaly score distribution", fontsize=11)
+    ax.set_xlabel(f"{primary} score"); ax.set_ylabel("pixels")
+    ax.set_yscale("log")
+    ax.legend(fontsize=8)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    path = os.path.join(out_dir, f"{piece.piece_id}_analysis.png")
     plt.savefig(path, dpi=140)
     plt.close(fig)
     return path
