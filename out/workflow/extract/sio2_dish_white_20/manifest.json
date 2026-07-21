@@ -1,0 +1,309 @@
+{
+  "dataset": "sio2_dish_white_20",
+  "material": "sio2",
+  "radiometry": "reflectance",
+  "n_pieces": 15,
+  "n_rois": 29,
+  "pieces": [
+    {
+      "piece_id": "sio2 all 20 dish white_p01",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        1054,
+        1277,
+        247,
+        503
+      ],
+      "shape": [
+        223,
+        256,
+        300
+      ],
+      "n_foreground_px": 22040,
+      "n_rois": 10,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p02",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        115,
+        295,
+        196,
+        331
+      ],
+      "shape": [
+        180,
+        135,
+        300
+      ],
+      "n_foreground_px": 8291,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p03",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        306,
+        424,
+        338,
+        456
+      ],
+      "shape": [
+        118,
+        118,
+        300
+      ],
+      "n_foreground_px": 7117,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p04",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        760,
+        869,
+        323,
+        451
+      ],
+      "shape": [
+        109,
+        128,
+        300
+      ],
+      "n_foreground_px": 6941,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p05",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        835,
+        954,
+        388,
+        499
+      ],
+      "shape": [
+        119,
+        111,
+        300
+      ],
+      "n_foreground_px": 6738,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p06",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        475,
+        589,
+        239,
+        334
+      ],
+      "shape": [
+        114,
+        95,
+        300
+      ],
+      "n_foreground_px": 6406,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p07",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        1190,
+        1260,
+        151,
+        265
+      ],
+      "shape": [
+        70,
+        114,
+        300
+      ],
+      "n_foreground_px": 5634,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p08",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        327,
+        417,
+        231,
+        315
+      ],
+      "shape": [
+        90,
+        84,
+        300
+      ],
+      "n_foreground_px": 5536,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p09",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        950,
+        1068,
+        302,
+        379
+      ],
+      "shape": [
+        118,
+        77,
+        300
+      ],
+      "n_foreground_px": 5078,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p10",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        995,
+        1092,
+        61,
+        184
+      ],
+      "shape": [
+        97,
+        123,
+        300
+      ],
+      "n_foreground_px": 4129,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p11",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        423,
+        533,
+        496,
+        556
+      ],
+      "shape": [
+        110,
+        60,
+        300
+      ],
+      "n_foreground_px": 3400,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p12",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        1154,
+        1211,
+        46,
+        125
+      ],
+      "shape": [
+        57,
+        79,
+        300
+      ],
+      "n_foreground_px": 2159,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p13",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        238,
+        303,
+        104,
+        177
+      ],
+      "shape": [
+        65,
+        73,
+        300
+      ],
+      "n_foreground_px": 2036,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p14",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        341,
+        380,
+        87,
+        149
+      ],
+      "shape": [
+        39,
+        62,
+        300
+      ],
+      "n_foreground_px": 1537,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "sio2 all 20 dish white_p15",
+      "source_label": "sio2 all 20 dish white",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_20",
+      "bbox_in_scan": [
+        1117,
+        1188,
+        101,
+        167
+      ],
+      "shape": [
+        71,
+        66,
+        300
+      ],
+      "n_foreground_px": 1101,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    }
+  ]
+}

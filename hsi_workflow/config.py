@@ -71,7 +71,7 @@ LIG = DatasetConfig(
     pair_regex=r"^(?P<sample>.+)-[Rr][Oo][Ii]-(?P<roi>\d+)\.bip\.hdr$",
     white_ref=_WHITE_REF,
     dark_ref=_DARK_REF,
-    material="sio2",          # LIG is not a semiconductor; treated as experimental here
+    material="lig",           # laser-induced graphene test bed -- neither silicon nor sio2
     background="auto",
     geometry="reflectance",
 )
@@ -131,6 +131,11 @@ DATASETS = {cfg.name: cfg for cfg in (
 # does not pass its own baseline. Kept here so the choice is configurable in one
 # place rather than hard-coded in the orchestrator.
 DEFAULT_BASELINE = "sio2_bare_si"
+
+# Where ``run_organize`` writes the plan's organized Specimen -> Piece -> ROI
+# tree and the sample database (``data/samples.csv``). The raw scans stay at
+# ``_HSI_ROOT`` (the acquisition archive); this tree is the analysis-ready copy.
+ORGANIZED_DATA_ROOT = "data"
 
 
 # --------------------------------------------------------------------------
@@ -236,7 +241,6 @@ class RoiConfig:
     patch: int = 32
     stride: int = 32                  # == patch => non-overlapping tiles
     min_coverage: float = 0.85        # fraction of patch pixels that must be in-mask
-    save_patches: bool = False        # also persist each ROI as its own sub-cube
 
     def validate(self) -> None:
         if self.patch < 2:

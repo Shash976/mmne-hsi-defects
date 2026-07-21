@@ -1,0 +1,20 @@
+{
+  "piece_id": "Dish on White 1_p03",
+  "source_label": "Dish on White 1",
+  "material": "sio2",
+  "dataset": "sio2_dish_white_1",
+  "bbox_in_scan": [
+    268,
+    367,
+    6,
+    74
+  ],
+  "shape": [
+    99,
+    68,
+    300
+  ],
+  "n_foreground_px": 6161,
+  "n_rois": 6,
+  "radiometry": "reflectance"
+}

@@ -29,13 +29,17 @@ import os
 from dataclasses import replace
 from typing import Dict, List, Optional, Tuple
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 
-from .config import DatasetConfig, WorkflowConfig
-from .io import Cube, iter_cube_paths, load_dataset_cube, save_envi_cube
-from .preprocessing import preprocess, saturation_mask, normalize_intensity
-from .pieces import Piece, extract_pieces
-from .rois import Roi, tile_rois, build_roi_table
+from config import DatasetConfig, WorkflowConfig
+from cube_io import Cube, iter_cube_paths, load_dataset_cube, save_envi_cube
+from preprocessing import preprocess, saturation_mask, normalize_intensity
+from pieces import Piece, extract_pieces
+from rois import Roi, tile_rois, build_roi_table
+from viz import pseudo_rgb
 
 
 def _reflectance_cube(raw_piece: Piece, src: Cube, ds_cfg: DatasetConfig,
@@ -91,12 +95,19 @@ def export_dataset(ds_cfg: DatasetConfig, wf: WorkflowConfig, out_root: str,
                            save_cube, wavelengths=cube.wavelengths, material=rp.material)
             np.save(os.path.join(piece_dir, f"{rp.piece_id}_mask.npy"), rp.mask)
 
-            # --- ROIs: features from SNV, cubes from reflectance ---
+            # --- piece pseudo-RGB image ---
+            piece_rgb = pseudo_rgb(save_cube, cube.wavelengths)
+            plt.imsave(os.path.join(piece_dir, f"{rp.piece_id}_rgb.png"), piece_rgb)
+
+            # --- ROIs: mean-spectrum features from SNV; scalar stats (std,
+            # spectral_variance, mean_reflectance) from the physical
+            # reflectance cube, where they are actually informative (on SNV
+            # data per-pixel std is ~1 by construction).
             snv_cube = normalize_intensity(save_cube, "snv")
             feat_piece = Piece(data=snv_cube, mask=rp.mask, material=rp.material,
                                piece_id=rp.piece_id, source_label=rp.source_label,
                                bbox=rp.bbox, wavelengths=cube.wavelengths)
-            rois = tile_rois(feat_piece, wf.roi)
+            rois = tile_rois(feat_piece, wf.roi, stats_data=save_cube)
 
             roi_rows = []
             for roi in rois:
@@ -105,9 +116,12 @@ def export_dataset(ds_cfg: DatasetConfig, wf: WorkflowConfig, out_root: str,
                     save_envi_cube(os.path.join(roi_dir, f"{roi.roi_id}.hdr"),
                                    save_cube[r0:r1, c0:c1, :],
                                    wavelengths=cube.wavelengths, material=roi.material)
+                    roi_rgb = pseudo_rgb(save_cube[r0:r1, c0:c1, :], cube.wavelengths)
+                    plt.imsave(os.path.join(roi_dir, f"{roi.roi_id}_rgb.png"), roi_rgb)
                 roi_rows.append({"roi_id": roi.roi_id, "r0": r0, "r1": r1,
                                  "c0": c0, "c1": c1, "coverage": roi.coverage,
-                                 "spectral_variance": roi.spectral_variance})
+                                 "spectral_variance": roi.spectral_variance,
+                                 "mean_reflectance": roi.mean_reflectance})
             all_rois.extend(rois)
 
             # --- per-piece index + metadata ---

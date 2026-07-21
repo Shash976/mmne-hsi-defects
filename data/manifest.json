@@ -1,0 +1,51 @@
+{
+  "generated_utc": "2026-07-16T09:45:59+00:00",
+  "radiometry": "reflectance",
+  "roi": {
+    "patch": 32,
+    "stride": 32,
+    "min_coverage": 0.85
+  },
+  "datasets": {
+    "sio2_bare_si": {
+      "material": "silicon",
+      "raw_data_dir": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\sio2",
+      "raw_hdr_glob": "bare silicon all.bip.hdr",
+      "white_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\white_ref.bil.hdr",
+      "dark_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\dark_correction.bil.hdr",
+      "organized_tree": "organized\\sio2_bare_si",
+      "n_pieces": 9,
+      "n_rois": 20
+    },
+    "sio2_dish_black": {
+      "material": "sio2",
+      "raw_data_dir": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\sio2",
+      "raw_hdr_glob": "Dish on Black - 1.bip.hdr",
+      "white_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\white_ref.bil.hdr",
+      "dark_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\dark_correction.bil.hdr",
+      "organized_tree": "organized\\sio2_dish_black",
+      "n_pieces": 13,
+      "n_rois": 11
+    },
+    "sio2_dish_white_1": {
+      "material": "sio2",
+      "raw_data_dir": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\sio2",
+      "raw_hdr_glob": "Dish on White 1.bip.hdr",
+      "white_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\white_ref.bil.hdr",
+      "dark_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\dark_correction.bil.hdr",
+      "organized_tree": "organized\\sio2_dish_white_1",
+      "n_pieces": 4,
+      "n_rois": 13
+    },
+    "sio2_dish_white_20": {
+      "material": "sio2",
+      "raw_data_dir": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\sio2",
+      "raw_hdr_glob": "sio2 all 20 dish white.bil.hdr",
+      "white_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\white_ref.bil.hdr",
+      "dark_ref": "C:\\Users\\shash\\OneDrive - purdue.edu\\Summer\\hsi\\calibration_whitedark\\dark_correction.bil.hdr",
+      "organized_tree": "organized\\sio2_dish_white_20",
+      "n_pieces": 15,
+      "n_rois": 29
+    }
+  }
+}

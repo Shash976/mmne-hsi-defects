@@ -2,9 +2,18 @@
 
 The scientific core of the revised objective: compare every spectrum (pixel or
 ROI) against what "normal" looks like and emit a continuous anomaly score. The
-"normal" population is the **bare-silicon baseline** -- detectors are fit on
-silicon spectra and used to score the SiO2 samples, so high scores mark
-spectrally unusual regions without any defect labels.
+pipeline produces **two** notions of "normal", both label-free:
+
+- **within-film** (``AnomalyConfig.fit_on="self"``, the default): detectors are
+  fit on the target's own majority population, so high scores mark small,
+  localized regions that differ from the bulk film. This drives the flagged
+  regions and region tables (the document's "small localized anomalies").
+- **silicon-baseline contrast** (always computed): a Mahalanobis detector fit on
+  the bare-silicon control population scores every pixel by how unlike silicon
+  it is -- the document's literal "relative to a spectrally homogeneous silicon
+  baseline" deliverable. Because silicon and SiO2 are different materials this
+  map is a material-contrast map, not a defect screen; it is reported alongside,
+  never used to flag regions unless ``fit_on="baseline"`` is chosen explicitly.
 
 Each detector implements the same tiny protocol -- ``fit(normal) -> self`` and
 ``score(X) -> higher-is-more-anomalous`` -- and is registered in ``_DETECTORS``.
@@ -17,7 +26,7 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from .config import AnomalyConfig
+from config import AnomalyConfig
 
 
 def _subsample(X: np.ndarray, cap: int, seed: int) -> np.ndarray:
@@ -122,12 +131,6 @@ def fit_detectors(normal_X: np.ndarray, cfg: AnomalyConfig) -> Dict[str, object]
     return {name: _make_detector(name, cfg).fit(fit_X) for name in cfg.methods}
 
 
-def score_all(detectors: Dict[str, object], X: np.ndarray) -> Dict[str, np.ndarray]:
-    """Score ``X`` (n_samples, n_features) with every fitted detector."""
-    X = np.asarray(X, dtype=np.float64)
-    return {name: det.score(X) for name, det in detectors.items()}
-
-
 def anomaly_map(scores: np.ndarray, shape, mask: Optional[np.ndarray] = None,
                 fill: float = np.nan) -> np.ndarray:
     """Reshape per-pixel scores to a (rows, cols) heatmap; off-mask = ``fill``."""
@@ -140,10 +143,31 @@ def anomaly_map(scores: np.ndarray, shape, mask: Optional[np.ndarray] = None,
     return out.reshape(rows, cols)
 
 
-def flag_threshold(baseline_scores: np.ndarray, percentile: float) -> float:
-    """Flagging threshold = a high percentile of the baseline score distribution.
+def flag_threshold(normal_scores: np.ndarray, percentile: float) -> float:
+    """Flagging threshold = a high percentile of the normal-population scores.
 
-    Anything above this (learned purely from the silicon baseline) is flagged
-    anomalous, keeping the flag rate low and interpretable.
+    Anything above this (learned purely from the population the detector was
+    fit on) is flagged anomalous, keeping the flag rate low and interpretable.
     """
-    return float(np.percentile(baseline_scores, percentile))
+    return float(np.percentile(normal_scores, percentile))
+
+
+def to_probability(scores: np.ndarray, lo_pct: float = 1.0,
+                   hi_pct: float = 99.0) -> np.ndarray:
+    """Rescale raw detector scores to a 0-1 anomaly probability map (Stage 10).
+
+    Percentile-clipped min-max over the *finite* scores, so a handful of extreme
+    outliers can't compress the rest of the map to zero. NaNs (off-mask pixels)
+    pass through unchanged. This is a display/reporting normalization -- ranking
+    is preserved; it is not a calibrated statistical probability.
+    """
+    out = np.asarray(scores, dtype=np.float64).copy()
+    finite = np.isfinite(out)
+    if not finite.any():
+        return out
+    lo = np.percentile(out[finite], lo_pct)
+    hi = np.percentile(out[finite], hi_pct)
+    if hi <= lo:
+        hi = lo + 1e-12
+    out[finite] = np.clip((out[finite] - lo) / (hi - lo), 0.0, 1.0)
+    return out

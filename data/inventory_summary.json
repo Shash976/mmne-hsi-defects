@@ -1,0 +1,16 @@
+{
+  "generated_utc": "2026-07-16T09:45:59+00:00",
+  "n_samples": 41,
+  "n_samples_by_material": {
+    "sio2": 32,
+    "silicon": 9
+  },
+  "total_imaging_area_px": 220310,
+  "median_sample_area_px": 4175.0,
+  "area_px_by_material": {
+    "silicon": 56646,
+    "sio2": 163664
+  },
+  "n_rois_total": 73,
+  "document_target": "10-20 independent specimens (8-10 bare Si, 20-30 SiO2)"
+}

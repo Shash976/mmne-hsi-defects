@@ -49,25 +49,29 @@ population; `flag_threshold` sets the flag cutoff at a high percentile of the no
 scores; `anomaly_map` paints per-pixel scores back to the image. Defaults:
 Isolation Forest + Mahalanobis.
 
-### What is "normal"? The `fit_on` switch (read this)
+### What is "normal"? Both answers, every run (read this)
 
-This single setting changes the *meaning* of the results:
+Every run now produces **two anomaly products**, because the objective's two
+phrasings point at two different comparisons:
 
-| `AnomalyConfig.fit_on` | "Normal" = | Result |
+| Product | "Normal" = | Meaning |
 |---|---|---|
-| `"self"` **(default)** | the target's own majority population | **Localized anomalies within the film** — the small unusual regions the objective wants |
-| `"baseline"` | the bare-silicon dataset | **Material contrast** — every SiO₂ pixel scored by how unlike silicon it is |
+| **Within-film maps** (drive the flagged regions) | the population chosen by `fit_on` — default `"self"`, the target's own majority | **Localized anomalies within the film** — the small unusual regions the objective's metrics expect (2–10%, localized) |
+| **Silicon-baseline contrast map** (always computed) | the bare-silicon control population | The objective's literal hypothesis deliverable — every pixel scored by distance from the spectrally homogeneous silicon baseline. Since silicon and SiO₂ are *different materials* this is a **material-contrast** map: uniformly high values are expected; its *spatial variation* is the signal |
 
-**Why the default is `"self"`:** silicon and SiO₂ are *different materials*, so if
-you fit "normal" on silicon and score SiO₂, essentially **100% of the film is
-flagged** (it's all unlike silicon). That's the degenerate result we saw first. The
-document's real intent — "which ROIs differ from the **majority**", "small localized
-regions" — is intra-sample outlier detection, i.e. `fit_on="self"`. With it, the
-anomalous fraction dropped to a sensible **0–4%**, localized.
+**Why flags default to `"self"`:** fitting detectors on silicon and scoring SiO₂
+flags essentially **100% of the film** (it's all unlike silicon) — the degenerate
+result we saw first. The document's operational intent — "which ROIs differ from
+the **majority**", "small localized regions" — is intra-sample outlier detection.
+With `fit_on="self"` the anomalous fraction drops to a sensible **0–4%**,
+localized. Set `--fit-on baseline` only if you explicitly want the material
+contrast to drive the region tables.
 
-The silicon baseline is **still used** regardless of `fit_on`, for the per-region
-"distance from silicon baseline" feature (a spectral-space Mahalanobis fit on
-silicon).
+The silicon baseline additionally supplies the per-region "distance from silicon
+baseline" feature (a spectral-space Mahalanobis fit on silicon), regardless of
+`fit_on`. Alongside the raw score maps, the primary map is also rescaled to a
+0–1 **anomaly probability map** (`anomaly.to_probability`, percentile min-max —
+ranking preserved, not a calibrated probability).
 
 ## Spatial postprocessing (`postprocess.py`)
 
@@ -89,19 +93,18 @@ region into a `RegionStats`:
 |---|---|
 | `area`, `perimeter`, `compactness` | size and shape (`compactness = 4π·area / perimeter²`, 1 = disk) |
 | `centroid` | location |
-| `mean_reflectance` | mean of the analysis spectrum over the region* |
+| `mean_reflectance` | **physical** mean reflectance (from the piece's pre-SNV band-mean image) |
+| `mean_snv` | mean of the SNV analysis values (≈ 0 by construction; kept for transparency) |
 | `spectral_variance` | heterogeneity within the region |
 | `baseline_distance` | Mahalanobis distance of the region mean to the **silicon** baseline |
 | `mean_anomaly` | average anomaly score over the region |
+| `pca_1..k` | PCA coordinates of the region's mean spectrum |
 
-`regions_to_table` tidies these into a DataFrame (the document's region table).
-`spectral_distance_map` produces the standalone "distance from a reference spectrum"
-map (Euclidean, or Mahalanobis with a precision matrix).
-
-> *`mean_reflectance` is computed on the **SNV** analysis cube, which is
-> zero-centered per pixel — so it reads near 0, not true 0–1 reflectance. Treat it as
-> "mean analysis value." See [tuning.md](tuning.md) if you need physical reflectance
-> here.
+`regions_to_table` tidies these into a DataFrame (the document's region table);
+`run_analyze` writes one CSV per piece **always** — an empty table means "nothing
+flagged" and prevents stale files from earlier runs surviving next to new
+figures. `spectral_distance_map` produces the per-piece "distance from the piece
+mean spectrum" panel (Euclidean, or Mahalanobis with a precision matrix).
 
 ## How it all composes per piece
 

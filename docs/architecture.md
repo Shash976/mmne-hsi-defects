@@ -21,10 +21,12 @@ stages in order. You can retune or replace any stage in isolation.
 | [`anomaly.py`](../hsi_workflow/anomaly.py) | Stage 8 — anomaly detector registry |
 | [`postprocess.py`](../hsi_workflow/postprocess.py) | Stage 9 — spatial cleanup |
 | [`regions.py`](../hsi_workflow/regions.py) | Stages 10–11 — region characterization |
-| [`viz.py`](../hsi_workflow/viz.py) | Preview panels (preprocess, PCA, analysis maps) |
+| [`report.py`](../hsi_workflow/report.py) | Stage 11 — the final `report.md` generator |
+| [`viz.py`](../hsi_workflow/viz.py) | Preview panels (preprocess, PCA summary/scatter, 9-panel analysis, histograms) |
 | [`optical_density.py`](../hsi_workflow/optical_density.py) | Old Step 10 — retained, off the default path |
 | [`pipeline.py`](../hsi_workflow/pipeline.py) | Orchestrator tying stages together |
-| `run_extract.py` / `run_explore.py` / `run_analyze.py` | Command-line entry points |
+| `run_organize.py` / `run_extract.py` / `run_explore.py` / `run_analyze.py` | Command-line entry points |
+| `../debug_preprocess.py` / `../debug_masks.py` | Interactive tuners (repo root; not part of the package) |
 
 ## The config system
 
@@ -48,7 +50,7 @@ The stage configs:
 |---|---|
 | `PreprocessConfig` | `calibrate`, `smooth`+`sg_window`/`sg_polyorder`, `baseline`, `normalize`, `od_method` |
 | `PieceConfig` | `method` (sam/mahalanobis/kmeans), `border_width`, `threshold`, `open_iter`/`close_iter`, `min_area`, `watershed_split` |
-| `RoiConfig` | `patch`, `stride`, `min_coverage`, `save_patches` |
+| `RoiConfig` | `patch`, `stride`, `min_coverage` |
 | `PcaConfig` | `n_components`, `whiten`, `max_fit_pixels` |
 | `ClusterConfig` | `method`, `n_clusters`, `dbscan_eps`/`dbscan_min_samples` |
 | `AnomalyConfig` | `methods`, `fit_on`, `contamination`, `anomaly_percentile` |
@@ -62,7 +64,7 @@ changes elsewhere. Current presets in `config.DATASETS`:
 
 | Name | File | Material |
 |---|---|---|
-| `lig` | LIG ROI scans (paired) | sio2 (test bed) |
+| `lig` | LIG ROI scans (paired) | lig (test bed) |
 | `sio2_bare_si` | `bare silicon all.bip` | **silicon** (baseline) |
 | `sio2_dish_white_20` | `sio2 all 20 dish white.bil` | sio2 |
 | `sio2_dish_black` | `Dish on Black - 1.bip` | sio2 |

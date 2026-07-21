@@ -19,8 +19,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from .pieces import Piece
-from .viz import pseudo_rgb
+from pieces import Piece
+from viz import pseudo_rgb
 
 
 def spectral_variance_map(cube: np.ndarray, mask: Optional[np.ndarray] = None) -> np.ndarray:
@@ -90,7 +90,7 @@ def save_material_mean_spectra(pieces: List[Piece], out_dir: str) -> str:
     """Overlay mean spectra grouped by material (Si baseline vs SiO2)."""
     os.makedirs(out_dir, exist_ok=True)
     plt.figure(figsize=(8, 5))
-    colors = {"silicon": "tab:blue", "sio2": "tab:red"}
+    colors = {"silicon": "tab:blue", "sio2": "tab:red", "lig": "tab:green"}
     seen = set()
     for p in pieces:
         wl = (p.wavelengths if p.wavelengths is not None

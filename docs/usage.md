@@ -6,11 +6,38 @@ Run everything in the `hsi` conda environment:
 conda run -n hsi python -m hsi_workflow.<command> [args]
 ```
 
-The three entry points map to phases of the pipeline.
+The entry points map to phases of the pipeline.
 
 ---
 
-## `run_extract` — organize into a piece/ROI dataset
+## `run_organize` — build the `data/` sample inventory + organized tree
+
+Implements the document's **Sample Inventory** stage: extracts pieces from every
+semiconductor scan and writes the hierarchical Specimen → Piece → ROI tree plus
+the sample database into the repo's `data/` folder.
+
+```bash
+python -m hsi_workflow.run_organize                       # all four Si/SiO₂ presets
+python -m hsi_workflow.run_organize --datasets sio2_bare_si sio2_dish_black
+python -m hsi_workflow.run_organize --no-roi-cubes        # skip per-ROI cubes
+```
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `--datasets` | the 4 Si/SiO₂ presets | Which presets to organize |
+| `--data-root` | `data` | Repo folder to organize into |
+| `--radiometry` | `reflectance` | Cropped cubes as calibrated reflectance or `raw` DN |
+| `--patch` / `--stride` / `--min-coverage` | `32`/`32`/`0.85` | ROI tiling |
+| `--no-roi-cubes` | off | Keep folders + `roi_index.csv`, skip ROI cubes |
+
+**Outputs:** `data/samples.csv` (the sample database — fill in `notes` by hand),
+`data/inventory_summary.json` (counts, sizes, imaging area),
+`data/manifest.json` (raw-scan + calibration provenance), and
+`data/organized/<dataset>/<piece_id>/...` trees. See [data/README.md](../data/README.md).
+
+---
+
+## `run_extract` — organize into a piece/ROI dataset (generic out-root)
 
 Splits each scan into pieces, tiles ROIs, and writes a **hierarchical on-disk
 dataset**: one folder per piece, each with the cropped piece cube and a `rois/`
@@ -55,19 +82,23 @@ Every cube is a standard ENVI pair (wavelengths preserved) — reload with
 
 Per-piece mean spectrum, band images, RGB, and spectral variance map, plus a
 by-material mean-spectra overlay. **Uses reflectance (SNV off)** so variance is
-meaningful.
+meaningful. Pass **several presets** to get the control-vs-experimental
+comparison (silicon + SiO₂) in one figure:
 
 ```bash
-python -m hsi_workflow.run_explore --dataset sio2_dish_white_20
+python -m hsi_workflow.run_explore --dataset sio2_bare_si sio2_dish_black
 ```
 
 | Argument | Default | Meaning |
 |---|---|---|
-| `--dataset` | `sio2_bare_si` | Which preset to explore |
-| `--out` | `out/workflow/explore` | Output root |
+| `--dataset` | `sio2_bare_si` | One or more presets (space separated) |
+| `--out` | `out/workflow/explore` | Output root (subfolder = joined preset names) |
 
-**Outputs:** `<piece>_explore.png` per piece, `material_mean_spectra.png`. Prints the
-mean spectral variance per piece and per material — silicon should be **low**.
+**Outputs:** `<piece>_explore.png` per piece, `material_mean_spectra.png`
+(genuinely overlays materials when you pass both), `material_variance.csv`
+(the Si-low / SiO₂-high check, persisted), `noise_metrics.csv` (RMS noise + SNR
+before/after SG smoothing), and `reflectance_histogram.png` (the Stage-2 "values
+mostly 0–1, no clipping" check).
 
 ---
 
@@ -91,17 +122,29 @@ python -m hsi_workflow.run_analyze \
 | `--cluster` | `kmeans` | `kmeans`/`dbscan`/`gmm` |
 | `--n-clusters` | `4` | k for kmeans/gmm |
 | `--anomaly` | `iforest mahalanobis` | One or more detectors |
-| `--fit-on` | `self` | `self` (anomalies within film) or `baseline` (vs silicon) |
+| `--fit-on` | `self` | Which population drives the *flags*: `self` (within film) or `baseline` (vs silicon). The silicon-contrast map is produced either way |
 | `--anomaly-percentile` | `97.5` | Flag threshold percentile of normal scores |
+| `--compare-clusters` | off | Also run kmeans/dbscan/gmm on the same features → stability CSV |
 | `--out` | `out/workflow/analyze` | Output root |
 
 **Outputs** (`out/workflow/analyze/<target>/`):
 
 - `pca_summary.png` — explained variance + PC loadings
-- `<piece>_analysis.png` — 6-panel: RGB, PC1–3, cluster map, anomaly heatmap,
-  flagged regions overlay, PC1 map
-- `<piece>_regions.csv` — the region table for that piece
+- `pca_scatter.png` — PC1 vs PC2 colored by piece (Stage 5 deliverable)
+- `spectral_histogram.png` — distribution of the analysis values
+- `<piece>_analysis.png` — 9-panel: PC1–3, cluster map, within-film anomaly
+  heatmap, **silicon-baseline contrast**, **spectral distance**, **0–1 anomaly
+  probability**, flagged regions overlay, normal-vs-anomalous spectra, score
+  histogram
+- `<piece>_regions.csv` — the region table (**always written**; empty = nothing
+  flagged, so stale files can't survive a rerun)
 - `roi_table.csv` — the cross-specimen ML table
+- `roi_evaluation.csv` — specimen-level hold-out scores (`split_by_specimen`;
+  written when ≥ 2 specimens have ROIs)
+- `cluster_comparison.csv` — per-method metrics + pairwise adjusted Rand index
+  (with `--compare-clusters`)
+- `report.md` — the Stage-11 final report (per-piece stats, edge-share
+  diagnostics, the document's questions answered)
 
 Prints a per-piece summary: silhouette, #clusters, anomalous fraction, #regions.
 
@@ -109,7 +152,7 @@ Prints a per-piece summary: silhouette, #clusters, anomalous fraction, #regions.
 
 ## Reading the outputs
 
-### The 6-panel analysis figure
+### The 9-panel analysis figure
 
 The header shows the piece id, material, anomalous fraction, region count, and
 silhouette. Panels (dark = off-piece):
@@ -118,7 +161,10 @@ silhouette. Panels (dark = off-piece):
 |---|---|
 | Spectral structure (PC1–3) | broad spectral variation as false colour; smooth = homogeneous film |
 | Clusters | discrete spectral populations, with a legend; coherent bands are good |
-| Anomaly score | bright = unusual; should be sparse and localized |
+| Anomaly score (within-film) | bright = unusual vs the film's own majority; should be sparse and localized |
+| Distance from Si baseline | the hypothesis deliverable — uniformly high is just the material difference; *variation* is the signal |
+| Spectral distance from piece mean | a model-free cross-check of the anomaly map |
+| Anomaly probability (0–1) | the score map rescaled for comparison across pieces |
 | Flagged anomalies | regions **outlined in red and numbered** (numbers match the region CSV) |
 | **Mean spectrum: normal vs anomalous** | *the payoff* — how the flagged spectra differ in shape from the film |
 | Anomaly score distribution | histogram with the flag threshold; the tail past the line is what gets flagged |

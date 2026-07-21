@@ -1,0 +1,20 @@
+{
+  "piece_id": "Dish on Black - 1_p07",
+  "source_label": "Dish on Black - 1",
+  "material": "sio2",
+  "dataset": "sio2_dish_black",
+  "bbox_in_scan": [
+    390,
+    449,
+    149,
+    214
+  ],
+  "shape": [
+    59,
+    65,
+    300
+  ],
+  "n_foreground_px": 2934,
+  "n_rois": 0,
+  "radiometry": "reflectance"
+}

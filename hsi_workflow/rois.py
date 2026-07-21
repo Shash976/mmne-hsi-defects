@@ -19,8 +19,8 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from .config import RoiConfig
-from .pieces import Piece
+from config import RoiConfig
+from pieces import Piece
 
 
 @dataclass
@@ -42,16 +42,22 @@ class Roi:
     mean_spectrum: np.ndarray
     std: float
     spectral_variance: float
+    mean_reflectance: float = float("nan")   # physical reflectance (pre-SNV), when available
     pca: Optional[np.ndarray] = None
     anomaly: dict = field(default_factory=dict)
 
 
-def tile_rois(piece: Piece, cfg: RoiConfig) -> List[Roi]:
+def tile_rois(piece: Piece, cfg: RoiConfig,
+              stats_data: Optional[np.ndarray] = None) -> List[Roi]:
     """Tile one piece into ROIs, keeping only patches well inside the mask.
 
     A patch is accepted when at least ``cfg.min_coverage`` of its pixels are in
     the piece mask, so ROIs never straddle the dish or the piece edge. Each ROI's
-    features come from the mean over its in-mask pixels.
+    ``mean_spectrum`` comes from ``piece.data`` (the analysis/SNV cube); the
+    scalar heterogeneity stats (``std``, ``spectral_variance``) come from
+    ``stats_data`` when given (typically the *reflectance* cube -- on SNV data
+    per-pixel std is ~1 by construction and carries no information). Physical
+    ``mean_reflectance`` comes from ``piece.reflectance_mean`` or ``stats_data``.
     """
     cfg.validate()
     data = piece.data
@@ -68,9 +74,17 @@ def tile_rois(piece: Piece, cfg: RoiConfig) -> List[Roi]:
             coverage = float(sub_mask.mean())
             if coverage < cfg.min_coverage:
                 continue
-            sub = data[r0:r1, c0:c1, :]
-            spectra = sub[sub_mask]                       # (n_in_mask, bands)
+            spectra = data[r0:r1, c0:c1, :][sub_mask]     # (n_in_mask, bands)
             mean_spec = spectra.mean(axis=0)
+
+            stats = (stats_data[r0:r1, c0:c1, :][sub_mask]
+                     if stats_data is not None else spectra)
+            mean_refl = float("nan")
+            if piece.reflectance_mean is not None:
+                mean_refl = float(np.nanmean(piece.reflectance_mean[r0:r1, c0:c1][sub_mask]))
+            elif stats_data is not None:
+                mean_refl = float(stats.mean())
+
             idx += 1
             rois.append(Roi(
                 roi_id=f"{piece.piece_id}_r{idx:04d}",
@@ -80,10 +94,11 @@ def tile_rois(piece: Piece, cfg: RoiConfig) -> List[Roi]:
                 bbox=(int(r0), int(r1), int(c0), int(c1)),
                 coverage=coverage,
                 mean_spectrum=mean_spec,
-                std=float(spectra.std()),
+                std=float(stats.std()),
                 # spectral variance = mean over bands of the per-band variance
                 # across the patch's pixels; a scalar "how heterogeneous is this ROI".
-                spectral_variance=float(spectra.var(axis=0).mean()),
+                spectral_variance=float(stats.var(axis=0).mean()),
+                mean_reflectance=mean_refl,
             ))
     return rois
 
@@ -112,6 +127,7 @@ def build_roi_table(rois: Sequence[Roi],
             "material": r.material, "r0": r.bbox[0], "r1": r.bbox[1],
             "c0": r.bbox[2], "c1": r.bbox[3], "coverage": r.coverage,
             "std": r.std, "spectral_variance": r.spectral_variance,
+            "mean_reflectance": r.mean_reflectance,
         }
         if r.pca is not None:
             for i, v in enumerate(r.pca, start=1):

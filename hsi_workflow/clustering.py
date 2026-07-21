@@ -16,7 +16,7 @@ from typing import Callable, Dict, Optional
 
 import numpy as np
 
-from .config import ClusterConfig
+from config import ClusterConfig
 
 
 @dataclass
@@ -108,3 +108,41 @@ def cluster_metrics(features: np.ndarray, labels: np.ndarray,
         "calinski_harabasz": float(calinski_harabasz_score(X, y)),
         "n_clusters": len(set(y.tolist())),
     }
+
+
+def compare_methods(features: np.ndarray, cfg: ClusterConfig,
+                    methods: tuple = ("kmeans", "dbscan", "gmm"),
+                    max_samples: int = 20_000, seed: int = 0) -> dict:
+    """Stage 7's "compare cluster stability": run several algorithms, score each.
+
+    Runs every method in ``methods`` on the same (subsampled) features, computes
+    each one's quality metrics, and the pairwise Adjusted Rand Index between the
+    label assignments -- high ARI means two methods find the *same* spectral
+    populations, i.e. the structure is stable rather than an algorithmic artifact.
+
+    Returns ``{"per_method": {name: metrics}, "pairwise_ari": {"a|b": ari}}``.
+    """
+    from dataclasses import replace
+    from sklearn.metrics import adjusted_rand_score
+
+    X = features
+    if X.shape[0] > max_samples:
+        rng = np.random.default_rng(seed)
+        X = X[rng.choice(X.shape[0], max_samples, replace=False)]
+
+    labels: Dict[str, np.ndarray] = {}
+    per_method = {}
+    for m in methods:
+        res = cluster(X, replace(cfg, method=m))
+        labels[m] = res.labels
+        per_method[m] = cluster_metrics(X, res.labels, max_samples=max_samples, seed=seed)
+
+    pairwise = {}
+    names = list(methods)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            # ARI over points labeled by both (DBSCAN noise -1 dropped).
+            keep = (labels[a] != -1) & (labels[b] != -1)
+            pairwise[f"{a}|{b}"] = (float(adjusted_rand_score(labels[a][keep], labels[b][keep]))
+                                    if keep.sum() > 1 else float("nan"))
+    return {"per_method": per_method, "pairwise_ari": pairwise}

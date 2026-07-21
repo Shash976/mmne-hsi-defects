@@ -1,0 +1,12 @@
+roi_id,specimen,material,split,score_iforest
+Dish on Black - 1_p01_r0001,Dish on Black - 1_p01,sio2,train,0.42403997686897593
+Dish on Black - 1_p01_r0002,Dish on Black - 1_p01,sio2,train,0.43042458831965874
+Dish on Black - 1_p01_r0003,Dish on Black - 1_p01,sio2,train,0.505049544244795
+Dish on Black - 1_p01_r0004,Dish on Black - 1_p01,sio2,train,0.44599610129930617
+Dish on Black - 1_p01_r0005,Dish on Black - 1_p01,sio2,train,0.4514116703706089
+Dish on Black - 1_p02_r0001,Dish on Black - 1_p02,sio2,train,0.634305998006702
+Dish on Black - 1_p02_r0002,Dish on Black - 1_p02,sio2,train,0.5430601840610175
+Dish on Black - 1_p02_r0003,Dish on Black - 1_p02,sio2,train,0.5400562585426498
+Dish on Black - 1_p04_r0001,Dish on Black - 1_p04,sio2,train,0.5050136004750422
+Dish on Black - 1_p04_r0002,Dish on Black - 1_p04,sio2,train,0.5423158572670782
+Dish on Black - 1_p03_r0001,Dish on Black - 1_p03,sio2,test,0.5275048686534124

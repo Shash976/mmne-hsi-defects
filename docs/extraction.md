@@ -76,8 +76,9 @@ Each `Piece` carries:
 **Single-piece scans (LIG):** the foreground is one blob, so the whole frame comes
 back as one `Piece` and downstream code is identical.
 
-**Persisting crops:** `save_piece_crops(pieces, out_dir)` writes each piece as its own
-ENVI `.hdr`/data pair plus a `*_mask.npy`, so a pipeline can restart from crops.
+**Persisting crops:** `dataset.export_dataset` (via `run_organize` /
+`run_extract`) writes each piece as its own calibrated ENVI `.hdr`/data pair plus
+a `*_mask.npy`, so a pipeline can restart from crops.
 
 ---
 
@@ -115,7 +116,8 @@ leakage**. Making the ROI the unit of analysis, and organizing data hierarchical
 `split_by_specimen(df, test_fraction, seed)` holds out **whole specimens** — every
 ROI of a test piece goes entirely to the test set, none leaks into training. This is
 the realistic evaluation the objective argues for: "how well does anomaly detection
-generalize to *new* samples?" Verified to produce disjoint specimen sets.
+generalize to *new* samples?" `run_analyze` runs this automatically (when ≥ 2
+specimens have ROIs) and writes the held-out scores to `roi_evaluation.csv`.
 
 > **Sizing note:** the document targets ~100–300 ROIs per piece. That assumes large
 > images; small test pieces yield only a handful at 32×32. Shrink `patch` or
@@ -125,12 +127,13 @@ generalize to *new* samples?" Verified to produce disjoint specimen sets.
 
 ## On-disk dataset layout
 
-`dataset.export_dataset` (driven by `run_extract`) writes the hierarchy the
-document recommends — **specimen → piece → ROI** — so the data is organized and
-easy to modify:
+`dataset.export_dataset` (driven by `run_organize`, which targets the repo's
+`data/` folder and also writes the sample database, or by `run_extract` for an
+arbitrary out-root) writes the hierarchy the document recommends —
+**specimen → piece → ROI** — so the data is organized and easy to modify:
 
 ```
-out/workflow/extract/<dataset>/
+data/organized/<dataset>/        (run_organize; run_extract uses out/workflow/extract/)
     manifest.json                 # dataset index: pieces, counts, material, radiometry
     roi_table.csv                 # aggregated ML table (mean spectra + scalar features)
     <piece_id>/

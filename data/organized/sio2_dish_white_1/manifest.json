@@ -1,0 +1,89 @@
+{
+  "dataset": "sio2_dish_white_1",
+  "material": "sio2",
+  "radiometry": "reflectance",
+  "n_pieces": 4,
+  "n_rois": 13,
+  "pieces": [
+    {
+      "piece_id": "Dish on White 1_p01",
+      "source_label": "Dish on White 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_1",
+      "bbox_in_scan": [
+        132,
+        255,
+        142,
+        337
+      ],
+      "shape": [
+        123,
+        195,
+        300
+      ],
+      "n_foreground_px": 10540,
+      "n_rois": 4,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on White 1_p02",
+      "source_label": "Dish on White 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_1",
+      "bbox_in_scan": [
+        269,
+        392,
+        81,
+        192
+      ],
+      "shape": [
+        123,
+        111,
+        300
+      ],
+      "n_foreground_px": 8049,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on White 1_p03",
+      "source_label": "Dish on White 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_1",
+      "bbox_in_scan": [
+        268,
+        367,
+        6,
+        74
+      ],
+      "shape": [
+        99,
+        68,
+        300
+      ],
+      "n_foreground_px": 6161,
+      "n_rois": 6,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on White 1_p04",
+      "source_label": "Dish on White 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_white_1",
+      "bbox_in_scan": [
+        236,
+        292,
+        455,
+        514
+      ],
+      "shape": [
+        56,
+        59,
+        300
+      ],
+      "n_foreground_px": 1311,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    }
+  ]
+}

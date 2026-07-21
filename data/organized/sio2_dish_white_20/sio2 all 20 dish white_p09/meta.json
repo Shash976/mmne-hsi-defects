@@ -1,0 +1,20 @@
+{
+  "piece_id": "sio2 all 20 dish white_p09",
+  "source_label": "sio2 all 20 dish white",
+  "material": "sio2",
+  "dataset": "sio2_dish_white_20",
+  "bbox_in_scan": [
+    950,
+    1068,
+    302,
+    379
+  ],
+  "shape": [
+    118,
+    77,
+    300
+  ],
+  "n_foreground_px": 5078,
+  "n_rois": 2,
+  "radiometry": "reflectance"
+}
