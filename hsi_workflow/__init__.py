@@ -8,7 +8,7 @@ and is referenced (Mahalanobis/RX) but not imported here.
 
 Stage map (module : revised stage):
 
-    io / config          -- loading + dataset presets + per-stage config
+    cube_io / config     -- loading + dataset presets + per-stage config
     pieces               -- Stage 3.1  raw multi-piece scan -> individual pieces
     preprocessing        -- Stages 2-3 calibration, SG smoothing, baseline, SNV
     rois                 -- fixed-patch ROI table (cross-specimen, leakage-free)
@@ -18,14 +18,15 @@ Stage map (module : revised stage):
     anomaly              -- Stage 8    IsolationForest/LOF/Mahalanobis/OneClassSVM
     postprocess          -- Stage 9    median/opening/connected-components cleanup
     regions              -- Stages 10-11 quantitative maps + region characterization
+    report               -- Stage 11   final report.md generator
     pipeline             -- orchestrator tying the stages together
-    run_extract / run_explore / run_analyze -- CLIs
+    run_organize / run_extract / run_explore / run_analyze -- CLIs
 
 Optical density (``optical_density.py``) is retained but off the default path.
 """
 
 __all__ = [
-    "config", "io", "pieces", "preprocessing", "segmentation", "rois",
+    "config", "cube_io", "pieces", "preprocessing", "segmentation", "rois",
     "dataset", "explore", "decomposition", "clustering", "anomaly",
-    "postprocess", "regions", "viz", "optical_density", "pipeline",
+    "postprocess", "regions", "report", "viz", "optical_density", "pipeline",
 ]

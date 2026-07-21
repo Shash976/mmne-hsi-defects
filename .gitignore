@@ -56,3 +56,7 @@ logs/
 *.log
 
 *.bip
+
+# ENVI cube data companions (headers stay tracked)
+*.img
+*.raw

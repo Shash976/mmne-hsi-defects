@@ -1,11 +1,13 @@
-"""CLI for Steps 9-10: load -> preprocess -> optical density -> previews + stats.
+"""CLI for Stages 2-3 previews (plus the optional legacy optical-density view).
 
     python -m hsi_workflow.run_preprocess --dataset lig
-    python -m hsi_workflow.run_preprocess --dataset lig --od-method none
-    python -m hsi_workflow.run_preprocess --dataset sio2 --no-calibrate
+    python -m hsi_workflow.run_preprocess --dataset lig --od-method substrate
+    python -m hsi_workflow.run_preprocess --dataset sio2_dish_black --no-calibrate
 
 Writes preview PNGs to out/workflow/preprocessing/<label>/ and prints per-cube
-sanity statistics (shape, % saturated, finite check, film/substrate mean OD).
+sanity statistics (shape, % saturated, finite check). Optical density is OFF by
+default (the revised objective analyzes SG+SNV reflectance); pass --od-method
+substrate/white/reference_scan to inspect the legacy OD signal.
 """
 
 from __future__ import annotations
@@ -15,11 +17,11 @@ import os
 
 import numpy as np
 
-from .config import DATASETS, PreprocessConfig
-from .io import load_cube, iter_cube_paths
-from .preprocessing import preprocess
-from .optical_density import to_optical_density
-from .viz import save_preprocess_preview
+from config import DATASETS, PreprocessConfig
+from cube_io import load_cube, iter_cube_paths
+from preprocessing import preprocess
+from optical_density import to_optical_density
+from viz import save_preprocess_preview
 
 DEFAULT_OUT = os.path.join("out", "workflow", "preprocessing")
 
@@ -40,8 +42,10 @@ def main():
     p = argparse.ArgumentParser(description="HSI workflow Step 9-10: preprocessing + optical density.")
     p.add_argument("--dataset", default="lig", choices=sorted(DATASETS), help="Dataset preset.")
     p.add_argument("--out", default=DEFAULT_OUT)
-    p.add_argument("--od-method", default="substrate",
-                   choices=["substrate", "white", "reference_scan", "none"])
+    p.add_argument("--od-method", default="none",
+                   choices=["substrate", "white", "reference_scan", "none"],
+                   help="Optical density is off the default analysis path; "
+                        "choose a method to inspect the legacy OD signal.")
     p.add_argument("--normalize", default="none", choices=["none", "snv"])
     p.add_argument("--no-calibrate", action="store_true",
                    help="Skip white/dark reflectance calibration (use raw/background-subtracted DN).")
@@ -81,8 +85,10 @@ def main():
         pct_sat = 100.0 * pre.saturated.mean()
         finite = np.isfinite(od).all()
         seg = pre.segmentation
-        od_film = float(od[seg.foreground].mean()) if seg.foreground.sum() else float("nan")
-        od_subs = float(od[seg.substrate].mean()) if seg.substrate.sum() else float("nan")
+        od_film = od_subs = float("nan")
+        if seg is not None:
+            od_film = float(od[seg.foreground].mean()) if seg.foreground.sum() else float("nan")
+            od_subs = float(od[seg.substrate].mean()) if seg.substrate.sum() else float("nan")
 
         out_dir = os.path.join(args.out, label)
         save_preprocess_preview(pre, od, out_dir, od_band_nm=args.od_band_nm)

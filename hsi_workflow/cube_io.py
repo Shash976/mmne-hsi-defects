@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import spectral
 
-from .config import DatasetConfig
+from config import DatasetConfig
 
 
 @dataclass
@@ -86,6 +86,8 @@ def save_envi_cube(hdr_path: str, data: np.ndarray,
     if material is not None:
         meta["material"] = material
     spectral.envi.save_image(hdr_path, np.asarray(data), metadata=meta, dtype=dtype, force=True)
+    print("Saved ENVI cube:", hdr_path)
+    print("Saved Image:", hdr_path[:-4] + ".img")
     return hdr_path
 
 

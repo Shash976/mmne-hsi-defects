@@ -26,9 +26,9 @@ from typing import Optional
 import numpy as np
 from scipy.signal import savgol_filter
 
-from .config import PreprocessConfig
-from .io import Cube, load_reference_spectrum
-from .segmentation import segment, Segmentation
+from config import PreprocessConfig
+from cube_io import Cube, load_reference_spectrum
+from segmentation import segment, Segmentation
 
 
 @dataclass
@@ -39,6 +39,9 @@ class Preprocessed:
     ``saturated`` flags clipped pixels. ``segmentation`` is the film/substrate
     split -- only populated when the optical-density substrate path needs it,
     otherwise ``None`` (piece extraction supplies the foreground mask instead).
+    ``reflectance_mean`` is the (rows, cols) band-mean of the *pre-SNV*
+    reflectance so later stages can report physical reflectance. ``noise`` holds
+    the before/after smoothing noise metrics (the document's Stage 3/4 metric).
     """
 
     data: np.ndarray
@@ -46,6 +49,8 @@ class Preprocessed:
     saturated: np.ndarray            # (rows, cols) bool
     segmentation: Optional[Segmentation]
     label: str
+    reflectance_mean: Optional[np.ndarray] = None
+    noise: Optional[dict] = None
 
 
 # --------------------------------------------------------------------------
@@ -149,6 +154,35 @@ def savgol_smooth(cube: np.ndarray, window: int, polyorder: int) -> np.ndarray:
     return savgol_filter(cube, window_length=window, polyorder=polyorder, axis=-1)
 
 
+def noise_metrics(cube: np.ndarray, window: int, polyorder: int,
+                  sample: int = 5000, seed: int = 0) -> dict:
+    """High-frequency RMS noise + spectral SNR on a random pixel subsample.
+
+    The document's Stage 3/4 metric: "reduced high-frequency noise while
+    retaining spectral shape". Noise is estimated as the RMS residual between
+    each spectrum and its Savitzky-Golay fit (the smooth component); SNR is the
+    mean absolute signal over that noise. Compute this on the cube *before* and
+    *after* smoothing to quantify the reduction.
+    """
+    rows, cols, bands = cube.shape
+    flat = cube.reshape(-1, bands)
+    rng = np.random.default_rng(seed)
+    if flat.shape[0] > sample:
+        flat = flat[rng.choice(flat.shape[0], sample, replace=False)]
+    w = min(window, bands - (1 - bands % 2))
+    if w % 2 == 0:
+        w -= 1
+    if w <= polyorder:
+        return {"rms_noise": float("nan"), "snr": float("nan"), "n_pixels": flat.shape[0]}
+    smooth = savgol_filter(flat, window_length=w, polyorder=polyorder, axis=-1)
+    resid = flat - smooth
+    rms = float(np.sqrt(np.mean(resid ** 2)))
+    signal = float(np.mean(np.abs(smooth)))
+    return {"rms_noise": rms,
+            "snr": signal / rms if rms > 0 else float("inf"),
+            "n_pixels": int(flat.shape[0])}
+
+
 def baseline_correct(cube: np.ndarray, method: str, order: int = 2) -> np.ndarray:
     """Optional per-pixel baseline removal (Stage 3.4).
 
@@ -218,9 +252,15 @@ def preprocess(cube: Cube, cfg: PreprocessConfig,
         data = subtract_background(data, dark_mean)
 
     # --- Stage 3.2 -> 3.4 -> 3.3: smooth, baseline, normalize ---
+    # Noise metrics (Stage 3/4 deliverable): RMS high-frequency noise + spectral
+    # SNR before vs after smoothing, on a pixel subsample.
+    noise = {"before": noise_metrics(data, cfg.sg_window, cfg.sg_polyorder, seed=cfg.seed)}
     if cfg.smooth == "savgol":
         data = savgol_smooth(data, cfg.sg_window, cfg.sg_polyorder)
+    noise["after"] = noise_metrics(data, cfg.sg_window, cfg.sg_polyorder, seed=cfg.seed)
     data = baseline_correct(data, cfg.baseline, cfg.baseline_order)
+    # Physical reflectance band-mean, captured before SNV flattens intensity.
+    reflectance_mean = data.mean(axis=-1).astype(np.float32)
     data = normalize_intensity(data, cfg.normalize)
 
     # Film/substrate segmentation is only needed for the substrate-referenced OD
@@ -230,4 +270,5 @@ def preprocess(cube: Cube, cfg: PreprocessConfig,
     if cfg.od_method == "substrate":
         seg = segment(data, valid_mask=~saturated, invert=cfg.invert_foreground, seed=cfg.seed)
     return Preprocessed(data=data, wavelengths=cube.wavelengths, saturated=saturated,
-                        segmentation=seg, label=cube.label)
+                        segmentation=seg, label=cube.label,
+                        reflectance_mean=reflectance_mean, noise=noise)

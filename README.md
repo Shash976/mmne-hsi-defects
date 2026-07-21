@@ -78,20 +78,32 @@ flowchart TD
 ### Quickstart
 
 ```bash
-# 1. Organize a scan into a piece/ROI folder tree (cropped cubes + ROI table)
-python -m hsi_workflow.run_extract  --dataset sio2_bare_si
+# 1. Build the sample inventory + organized Specimen→Piece→ROI tree in data/
+python -m hsi_workflow.run_organize
 
-# 2. Stage-4 exploratory figures (reflectance mean spectra, variance maps)
-python -m hsi_workflow.run_explore  --dataset sio2_dish_white_20
+# 2. Stage-4 exploratory figures — pass BOTH materials for the Si-vs-SiO₂ check
+python -m hsi_workflow.run_explore  --dataset sio2_bare_si sio2_dish_black
 
-# 3. Full analysis: PCA → clustering → anomaly → regions (fit on silicon baseline)
-python -m hsi_workflow.run_analyze  --target sio2_dish_white_20 --baseline sio2_bare_si
+# 3. Full analysis: PCA → clustering → anomaly (within-film + Si-contrast) →
+#    regions → specimen-split evaluation → report.md
+python -m hsi_workflow.run_analyze  --target sio2_dish_black --baseline sio2_bare_si
 ```
 
-Step 1 writes `out/workflow/extract/<dataset>/<piece_id>/` folders — each with the
-cropped piece cube, a `rois/` subfolder of cropped ROI cubes, and metadata — plus a
-`manifest.json` and aggregated `roi_table.csv`. Outputs land under
-`out/workflow/{extract,explore,analyze}/<dataset>/`.
+Step 1 writes `data/samples.csv` (the sample database), `data/manifest.json`, and
+`data/organized/<dataset>/<piece_id>/` folders — each with the cropped piece cube,
+a `rois/` subfolder of cropped ROI cubes, and metadata. Analysis outputs land
+under `out/workflow/{explore,analyze}/...`, including the Stage-11 `report.md`.
+
+**Interactive tuning** (find good filter/mask/ROI settings visually, then press
+`p` to print paste-ready config snippets):
+
+```bash
+python debug_preprocess.py --dataset sio2_bare_si     # SG window/SNV/baseline tuner
+python debug_masks.py      --dataset sio2_dish_black  # mask morphology + ROI grid tuner
+# both accept --crop R0 R1 C0 C1 for big scans and --demo for a synthetic cube
+```
+
+Plus `notebooks/playground.ipynb` for ad-hoc exploration with the same API.
 
 > Run everything in the `hsi` conda env: `conda run -n hsi python -m hsi_workflow...`
 
@@ -117,10 +129,15 @@ Detailed docs live in [`docs/`](docs/):
 
 ```
 hsi_workflow/         the pipeline package (see docs/architecture.md)
+data/                 sample database + organized Specimen→Piece→ROI tree (run_organize)
 docs/                 detailed documentation
+notebooks/            playground.ipynb — ad-hoc exploration scratchpad
+debug_preprocess.py   interactive filter/window tuner (sliders, live noise metrics)
+debug_masks.py        interactive mask/extraction/ROI tuner
+band_viewer.py        multi-cube band viewer (calibration sanity checks)
 legacy/               earlier LIG analysis (RX/Mahalanobis, PCA/KMeans) — reference only
 reference/            external reference code (not used by the pipeline)
-out/                  generated figures and tables
+out/                  generated figures and tables (out/legacy = pre-revision outputs)
 Revised Research Objective.md   the source specification this implements
 requirements.txt      numpy, scipy, scikit-learn, scikit-image, matplotlib, spectral, pandas
 ```

@@ -15,8 +15,8 @@ from __future__ import annotations
 import argparse
 import os
 
-from .config import DATASETS, WorkflowConfig
-from .dataset import export_dataset
+from config import DATASETS, WorkflowConfig
+from dataset import export_dataset
 
 DEFAULT_OUT = os.path.join("out", "workflow", "extract")
 
@@ -33,7 +33,7 @@ def build_cfg(args) -> WorkflowConfig:
 
 def main():
     p = argparse.ArgumentParser(description="Hierarchical piece/ROI dataset export.")
-    p.add_argument("--dataset", default="sio2_bare_si", choices=sorted(DATASETS))
+    p.add_argument("--dataset", default="sio2_bare_si", type=str.lower, choices=sorted(DATASETS))
     p.add_argument("--out", default=DEFAULT_OUT)
     p.add_argument("--radiometry", default="reflectance", choices=["reflectance", "raw"],
                    help="Save cropped cubes as calibrated reflectance (default) or raw DN.")

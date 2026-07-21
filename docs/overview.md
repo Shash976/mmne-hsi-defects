@@ -40,7 +40,8 @@ uniform substrate looks like under this exact camera/illumination setup. They ar
 
 A key sanity check falls out of this: silicon should show **low** spectral
 variance and processed SiO₂ **higher** variance (processing introduces
-heterogeneity). We verified silicon variance ≈ 0.001 and consistent across pieces.
+heterogeneity). `run_explore` persists this check as `material_variance.csv`
+(pass both a silicon and a SiO₂ preset to get the comparison in one run).
 
 ## The revised hypothesis
 
@@ -51,6 +52,16 @@ heterogeneity). We verified silicon variance ≈ 0.001 and consistent across pie
 The emphasis is on **baseline**, not **ground truth**. If the answer is "yes,"
 we've established a **non-destructive screening method** — an AI-assisted triage
 tool for semiconductor metrology.
+
+**How the pipeline operationalizes this** (important nuance): fitting detectors
+directly on silicon and scoring SiO₂ flags ~100% of the film — silicon and SiO₂
+are simply different materials, so the literal comparison degenerates into a
+material classifier. The pipeline therefore produces **two products every run**:
+the *silicon-baseline contrast map* (the hypothesis's literal comparison, kept as
+its own deliverable) and the *within-film anomaly maps* (detectors fit on the
+film's own majority) which drive the flagged regions — matching the document's
+operational metrics ("small localized regions", 2–10% anomalous, "different from
+the majority"). See [analysis.md](analysis.md#what-is-normal-both-answers-every-run-read-this).
 
 ## Why "no labels" is fine
 

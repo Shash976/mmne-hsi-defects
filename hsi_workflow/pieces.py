@@ -21,15 +21,14 @@ frame comes back as a single :class:`Piece`, so downstream code is identical.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy import ndimage as ndi
 
-from .config import PieceConfig
-from .io import Cube
+from config import PieceConfig
+from cube_io import Cube
 
 
 @dataclass
@@ -50,6 +49,11 @@ class Piece:
     source_label: str
     bbox: Tuple[int, int, int, int]
     wavelengths: Optional[np.ndarray] = None
+    # (rows, cols) band-mean of the *pre-SNV reflectance*, so later stages can
+    # report physical "mean reflectance" even though ``data`` is SNV-normalized.
+    reflectance_mean: Optional[np.ndarray] = None
+    # Per-piece noise metrics from preprocessing (before/after smoothing).
+    noise: Optional[dict] = None
 
     @property
     def shape(self):
@@ -91,7 +95,11 @@ def spectral_angle(flat: np.ndarray, ref: np.ndarray, eps: float = 1e-12) -> np.
     rather than by intensity.
     """
     num = flat @ ref
-    den = np.linalg.norm(flat, axis=1) * (np.linalg.norm(ref) + eps) + eps
+    # np.linalg.norm(flat, axis=1) materializes a full (n_pixels, bands) squared
+    # temporary before reducing it -- doubles peak memory and OOMs on large
+    # multi-piece scans. einsum fuses the square+reduce into a per-row scalar.
+    row_norms = np.sqrt(np.einsum("ij,ij->i", flat, flat))
+    den = row_norms * (np.linalg.norm(ref) + eps) + eps
     return np.arccos(np.clip(num / den, -1.0, 1.0))
 
 
@@ -124,7 +132,7 @@ def foreground_distance(cube: np.ndarray, cfg: PieceConfig) -> np.ndarray:
         frame[:, :width] = frame[:, -width:] = True
         dist = _mahalanobis_to_background(flat, cube[frame])
     elif cfg.method == "kmeans":
-        from .segmentation import segment
+        from segmentation import segment
         seg = segment(cube, invert=False, seed=cfg.seed)
         # segment() calls the larger cluster "substrate"; here substrate==background,
         # so foreground distance is simply the foreground membership as {0,1}.
@@ -232,24 +240,3 @@ def extract_pieces(cube: Cube, cfg: PieceConfig,
             wavelengths=cube.wavelengths,
         ))
     return pieces
-
-
-def save_piece_crops(pieces: List[Piece], out_dir: str) -> List[str]:
-    """Persist each piece as an ENVI ``.hdr``/data pair for restartable pipelines.
-
-    Uses ``spectral.envi.save_image``; masked-out (off-piece) pixels are left as
-    their raw values but the companion ``*_mask.npy`` records the true footprint.
-    Returns the list of header paths written.
-    """
-    import spectral
-    os.makedirs(out_dir, exist_ok=True)
-    written = []
-    for p in pieces:
-        hdr = os.path.join(out_dir, f"{p.piece_id}.hdr")
-        meta = {}
-        if p.wavelengths is not None:
-            meta["wavelength"] = [float(w) for w in p.wavelengths]
-        spectral.envi.save_image(hdr, p.data, metadata=meta, dtype=np.float32, force=True)
-        np.save(os.path.join(out_dir, f"{p.piece_id}_mask.npy"), p.mask)
-        written.append(hdr)
-    return written

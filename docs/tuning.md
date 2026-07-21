@@ -27,9 +27,10 @@ different material). Default `fit_on="self"` finds anomalies *within* the film. 
 SNV normalizes every pixel to zero-mean/unit-variance. So:
 - The **variance map** must be computed on **reflectance** — `run_explore` sets
   `normalize="none"` for this reason.
-- `region.mean_reflectance` on SNV data reads ≈ 0, not physical reflectance. It's
-  "mean analysis value." If you need true reflectance per region, carry a
-  pre-SNV cube through and recompute (not done by default).
+- Region tables report both `mean_reflectance` (physical, from the pre-SNV
+  band-mean that every `Piece` now carries) and `mean_snv` (the analysis-space
+  mean, ≈ 0 by construction). ROI `std`/`spectral_variance` in the organized
+  dataset export are computed on the reflectance cube for the same reason.
 
 ### 3. Anomalies love edges
 Piece boundaries have **mixed pixels** (part fragment, part dish) whose spectra are
@@ -54,31 +55,46 @@ path didn't exist). Verify before trusting LIG calibration.
 
 ## Known limitations (honest list)
 
-- **No mask erosion** → edge-dominated anomalies (gotcha #3).
-- **`mean_reflectance` is SNV-space**, not physical reflectance (gotcha #2).
+- **No mask erosion** → edge-dominated anomalies (gotcha #3). The report's
+  `edge share` column quantifies this per piece.
 - **ROI yield is small on tiny test pieces** — the ~100–300/piece target assumes
-  larger images; shrink `patch`/`stride` for the big `sio2_dish_white_20` scan.
+  larger images; shrink `patch`/`stride` (use `debug_masks.py` to find values
+  that hit the target on your pieces).
 - **Per-ROI anomaly scoring loops** one ROI at a time — fine for hundreds of ROIs,
   could be batched if you scale to many thousands.
 - **Whole pieces held in memory** during a run (bbox-cropped, so far manageable).
-- **Piece crops aren't calibrated on disk** — `save_piece_crops` stores raw analysis
-  data; treat crops as convenience, not archival calibrated cubes.
+- **Anomaly "probability" is a percentile rescale** of the raw scores (ranking
+  preserved), not a calibrated statistical probability.
 
 ## Ideas / future work
 
 - Mask erosion + boundary-region filtering to suppress edge artifacts.
-- Carry a reflectance cube alongside SNV so region tables report physical reflectance.
 - Overlapping-ROI defaults sized per image to hit the 100–300 target automatically.
-- ROI-level anomaly evaluation with `split_by_specimen` (train on some specimens,
-  score held-out ones) as a generalization check.
 - Batch the per-ROI scoring.
 - Stage 12: wire representative regions to a follow-up SEM/AFM/Raman worklist.
 
+## Interactive tuning tools
+
+Before committing knob values to `config.py`, find them visually:
+
+- `python debug_preprocess.py --dataset <name>` — SG window/polyorder sliders,
+  calibrate/SNV/baseline toggles, click-a-pixel before/after spectra, live noise
+  metrics. `p` prints a paste-ready `PreprocessConfig(...)`.
+- `python debug_masks.py --dataset <name>` — extraction method/threshold/
+  morphology/min-area sliders with a live mask overlay, labeled-piece view, and
+  the ROI grid with per-piece counts. `p` prints `PieceConfig`/`RoiConfig`.
+- `notebooks/playground.ipynb` — ad-hoc scratchpad using the same package API.
+
+Both scripts take `--crop R0 R1 C0 C1` for big scans and `--demo` for a
+synthetic cube.
+
 ## Sanity checklist for a new dataset
 
-1. `run_extract --figures` → do the pieces look right? dish excluded?
-2. `run_explore` → is silicon low-variance, SiO₂ higher? mean spectra plausible?
+1. `run_organize` (or `run_extract`) → do the pieces look right? dish excluded?
+   (`debug_masks.py` to fix extraction if not)
+2. `run_explore --dataset sio2_bare_si <new_dataset>` → is silicon low-variance,
+   SiO₂ higher? mean spectra plausible? reflectance mostly in [0, 1]?
 3. `run_analyze` → PC1 a large fraction? silhouette positive? anomaly fraction small
    and localized (not ~100%)?
 4. Open a `<piece>_analysis.png` → are flagged regions where you'd expect, or all on
-   edges (masking artifact)?
+   edges (masking artifact)? Check `report.md`'s edge-share column.

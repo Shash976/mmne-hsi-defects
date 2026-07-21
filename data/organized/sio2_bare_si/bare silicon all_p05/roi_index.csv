@@ -1,0 +1,2 @@
+roi_id,r0,r1,c0,c1,coverage,spectral_variance,mean_reflectance
+bare silicon all_p05_r0001,32,64,32,64,0.9296875,0.00011273105675189701,0.025784108550722627

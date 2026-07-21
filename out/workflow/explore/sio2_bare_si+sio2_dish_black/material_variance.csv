@@ -1,0 +1,25 @@
+piece_id,material,mean_spectral_variance
+bare silicon all_p01,silicon,0.000789880748493737
+bare silicon all_p02,silicon,0.0007655631497047478
+bare silicon all_p03,silicon,0.0009162863435977109
+bare silicon all_p04,silicon,0.001030381876602748
+bare silicon all_p05,silicon,0.000832050045514589
+bare silicon all_p06,silicon,0.0009697192881910278
+bare silicon all_p07,silicon,0.00079740974344179
+bare silicon all_p08,silicon,0.0010232187153423966
+bare silicon all_p09,silicon,0.0014937605545695919
+Dish on Black - 1_p01,sio2,0.0017050297138823738
+Dish on Black - 1_p02,sio2,0.0037911649632141674
+Dish on Black - 1_p03,sio2,0.00027397154171163103
+Dish on Black - 1_p04,sio2,0.00017888625994232944
+Dish on Black - 1_p05,sio2,0.02825541426287757
+Dish on Black - 1_p06,sio2,0.017764995780830854
+Dish on Black - 1_p07,sio2,0.019985206466863904
+Dish on Black - 1_p08,sio2,0.012385763628590608
+Dish on Black - 1_p09,sio2,0.010792257103255178
+Dish on Black - 1_p10,sio2,0.008469688178108666
+Dish on Black - 1_p11,sio2,0.001633320229898944
+Dish on Black - 1_p12,sio2,0.03668757491825026
+Dish on Black - 1_p13,sio2,0.0009287505906534444
+<all silicon>,silicon,0.0009575856072731488
+<all sio2>,sio2,0.010988617202929226

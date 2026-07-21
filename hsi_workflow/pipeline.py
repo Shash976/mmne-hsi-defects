@@ -6,17 +6,20 @@ Wires the stages together while keeping each one swappable:
       -> extract_pieces            (Stage 3.1, pieces.py)
       -> preprocess per piece      (Stages 2-3, preprocessing.py)      => "analysis piece"
       -> fit_pca on pooled fg      (Stage 5, decomposition.py)
-      -> fit_detectors on SILICON  (Stage 8 baseline, anomaly.py)
+      -> fit detectors on "normal" (Stage 8, anomaly.py; fit_on config)
       -> per target piece:
            cluster PCA scores      (Stages 6-7, clustering.py)
-           score anomalies         (Stage 8, anomaly.py)
+           score anomalies         (Stage 8: self-fit maps + silicon-contrast map)
            clean + label regions   (Stage 9, postprocess.py)
            characterize regions    (Stages 10-11, regions.py)
            tile ROIs               (rois.py)
       -> aggregate ROI table across specimens (rois.py)
 
-The baseline (silicon) and target (sio2) datasets are separate presets: detectors
-learn "normal" from silicon and score sio2. Everything downstream of extraction
+The baseline (silicon) and target (sio2) datasets are separate presets. Every
+run produces BOTH anomaly products: the within-film maps (detectors fit per
+``AnomalyConfig.fit_on``, default the film's own majority -- these drive the
+flagged regions) and the silicon-baseline contrast map (always computed; the
+document's literal hypothesis deliverable). Everything downstream of extraction
 works on full-band spectra; pseudo-RGB is only for the figures.
 """
 
@@ -27,16 +30,18 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from .config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
-from .io import Cube, iter_cube_paths, load_dataset_cube
-from .pieces import Piece, extract_pieces
-from .preprocessing import preprocess, saturation_mask
-from .decomposition import fit_pca, PcaModel
-from .clustering import cluster, cluster_map, cluster_metrics, ClusterResult
-from .anomaly import (fit_detectors, MahalanobisDetector, anomaly_map, flag_threshold)
-from .postprocess import clean_binary_map, label_regions
-from .regions import characterize_regions, regions_to_table, RegionStats
-from .rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
+from config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
+from cube_io import Cube, iter_cube_paths, load_dataset_cube
+from pieces import Piece, extract_pieces
+from preprocessing import preprocess, saturation_mask
+from decomposition import fit_pca, PcaModel
+from clustering import cluster, cluster_map, cluster_metrics, ClusterResult
+from anomaly import (fit_detectors, MahalanobisDetector, anomaly_map,
+                      flag_threshold, to_probability)
+from postprocess import clean_binary_map, label_regions
+from regions import (characterize_regions, regions_to_table, RegionStats,
+                      spectral_distance_map)
+from rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
 
 
 # --------------------------------------------------------------------------
@@ -70,6 +75,7 @@ def prepare_pieces(ds_cfg: DatasetConfig, wf: WorkflowConfig,
             pieces.append(Piece(
                 data=pre.data, mask=rp.mask, material=rp.material, piece_id=rp.piece_id,
                 source_label=rp.source_label, bbox=rp.bbox, wavelengths=cube.wavelengths,
+                reflectance_mean=pre.reflectance_mean, noise=pre.noise,
             ))
     return pieces
 
@@ -98,6 +104,9 @@ class PieceAnalysis:
     cluster_map: np.ndarray                    # (rows, cols) int, off-mask = -1
     cluster_metrics: dict
     anomaly_maps: Dict[str, np.ndarray]        # method -> (rows, cols) score map
+    probability_map: np.ndarray                # (rows, cols) 0-1 anomaly probability
+    baseline_map: np.ndarray                   # (rows, cols) distance-from-silicon contrast
+    spectral_distance: np.ndarray              # (rows, cols) distance from piece mean spectrum
     flagged: np.ndarray                        # (rows, cols) bool, cleaned
     regions: List[RegionStats]
     region_table: object                       # pandas DataFrame
@@ -130,7 +139,11 @@ def analyze_piece(piece: Piece, pca: PcaModel, detectors: Dict[str, object],
     cmap = cluster_map(cres, mask.shape, mask)
     cmetrics = cluster_metrics(feat, cres.labels)
 
-    # --- Stage 8: anomaly scores (fit on silicon baseline) ---
+    # --- Stage 8: anomaly scores. Two products, both label-free:
+    # (1) detectors fit on the configured "normal" population (default: the
+    #     film's own majority) -- these drive flags/regions;
+    # (2) the silicon-baseline contrast map (always computed) -- the document's
+    #     literal "relative to silicon baseline" deliverable.
     amaps: Dict[str, np.ndarray] = {}
     fg_scores: Dict[str, np.ndarray] = {}
     for name, det in detectors.items():
@@ -138,6 +151,15 @@ def analyze_piece(piece: Piece, pca: PcaModel, detectors: Dict[str, object],
         fg_scores[name] = s
         amaps[name] = anomaly_map(s, mask.shape, mask)
     primary = wf.anomaly.methods[0]
+    probability_map = to_probability(amaps[primary])
+
+    baseline_map = anomaly_map(baseline_spectral.score(fg), mask.shape, mask)
+
+    # Stage 10 deliverable: distance of every pixel from the piece's own mean
+    # spectrum (Euclidean in the analysis space).
+    global_mean = fg.mean(axis=0)
+    sdist = spectral_distance_map(piece.data, global_mean)
+    sdist = np.where(mask, sdist, np.nan)
 
     # --- Stage 9: flag + spatially clean the primary anomaly map ---
     flag_flat = fg_scores[primary] > thresholds[primary]
@@ -149,7 +171,9 @@ def analyze_piece(piece: Piece, pca: PcaModel, detectors: Dict[str, object],
     # --- Stage 10-11: characterize the surviving regions ---
     labels, n = label_regions(flagged)
     regions = characterize_regions(labels, n, piece.data, amaps[primary],
-                                   baseline_detector=baseline_spectral)
+                                   baseline_detector=baseline_spectral,
+                                   reflectance_mean=piece.reflectance_mean,
+                                   pca=pca)
     region_table = regions_to_table(regions)
 
     # --- PC score image (full bbox; off-mask -> NaN for display) ---
@@ -167,7 +191,8 @@ def analyze_piece(piece: Piece, pca: PcaModel, detectors: Dict[str, object],
 
     return PieceAnalysis(
         piece=piece, pc_score_image=pc_img, cluster_map=cmap, cluster_metrics=cmetrics,
-        anomaly_maps=amaps, flagged=flagged, regions=regions,
+        anomaly_maps=amaps, probability_map=probability_map, baseline_map=baseline_map,
+        spectral_distance=sdist, flagged=flagged, regions=regions,
         region_table=region_table, rois=rois,
     )
 

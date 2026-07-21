@@ -1,0 +1,269 @@
+{
+  "dataset": "sio2_dish_black",
+  "material": "sio2",
+  "radiometry": "reflectance",
+  "n_pieces": 13,
+  "n_rois": 11,
+  "pieces": [
+    {
+      "piece_id": "Dish on Black - 1_p01",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        230,
+        457,
+        27,
+        182
+      ],
+      "shape": [
+        227,
+        155,
+        300
+      ],
+      "n_foreground_px": 12062,
+      "n_rois": 5,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p02",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        70,
+        159,
+        98,
+        230
+      ],
+      "shape": [
+        89,
+        132,
+        300
+      ],
+      "n_foreground_px": 7028,
+      "n_rois": 3,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p03",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        259,
+        374,
+        185,
+        282
+      ],
+      "shape": [
+        115,
+        97,
+        300
+      ],
+      "n_foreground_px": 5615,
+      "n_rois": 1,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p04",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        139,
+        250,
+        226,
+        297
+      ],
+      "shape": [
+        111,
+        71,
+        300
+      ],
+      "n_foreground_px": 4650,
+      "n_rois": 2,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p05",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        378,
+        549,
+        419,
+        587
+      ],
+      "shape": [
+        171,
+        168,
+        300
+      ],
+      "n_foreground_px": 4175,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p06",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        498,
+        549,
+        132,
+        415
+      ],
+      "shape": [
+        51,
+        283,
+        300
+      ],
+      "n_foreground_px": 3348,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p07",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        390,
+        449,
+        149,
+        214
+      ],
+      "shape": [
+        59,
+        65,
+        300
+      ],
+      "n_foreground_px": 2934,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p08",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        385,
+        444,
+        431,
+        494
+      ],
+      "shape": [
+        59,
+        63,
+        300
+      ],
+      "n_foreground_px": 2839,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p09",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        6,
+        119,
+        259,
+        559
+      ],
+      "shape": [
+        113,
+        300,
+        300
+      ],
+      "n_foreground_px": 2192,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p10",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        24,
+        141,
+        62,
+        196
+      ],
+      "shape": [
+        117,
+        134,
+        300
+      ],
+      "n_foreground_px": 1350,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p11",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        130,
+        176,
+        500,
+        545
+      ],
+      "shape": [
+        46,
+        45,
+        300
+      ],
+      "n_foreground_px": 1120,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p12",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        462,
+        509,
+        56,
+        123
+      ],
+      "shape": [
+        47,
+        67,
+        300
+      ],
+      "n_foreground_px": 1116,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Dish on Black - 1_p13",
+      "source_label": "Dish on Black - 1",
+      "material": "sio2",
+      "dataset": "sio2_dish_black",
+      "bbox_in_scan": [
+        201,
+        248,
+        368,
+        419
+      ],
+      "shape": [
+        47,
+        51,
+        300
+      ],
+      "n_foreground_px": 1031,
+      "n_rois": 0,
+      "radiometry": "reflectance"
+    }
+  ]
+}

@@ -25,9 +25,9 @@ from typing import Optional
 
 import numpy as np
 
-from .config import PreprocessConfig
-from .io import Cube, load_reference_spectrum
-from .preprocessing import Preprocessed
+from config import PreprocessConfig
+from cube_io import Cube, load_reference_spectrum
+from preprocessing import Preprocessed
 
 
 def optical_density(cube: np.ndarray, i0: np.ndarray, eps: float = 1e-6) -> np.ndarray:
