@@ -205,6 +205,7 @@ class MaskTuner:
                 cmap="autumn", alpha=0.35, vmin=0, vmax=1, extent=extent)
         else:
             self._im_band.set_data(band[sl])
+            self._im_band.set_clim(float(band[sl].min()), float(band[sl].max()))
             self._overlay.set_data(
                 np.ma.masked_invalid(np.where(self.mask[sl], 1.0, np.nan)))
         self._overlay.set_visible(self.show_mask)
@@ -256,6 +257,7 @@ class MaskTuner:
         sl = (slice(None, None, step), slice(None, None, step))
         if self._im_band is not None:
             self._im_band.set_data(band[sl])
+            self._im_band.set_clim(float(band[sl].min()), float(band[sl].max()))
             self.axes[0].set_title(
                 f"band {self.band} ({self.wl[self.band]:.0f} nm) + mask "
                 f"({self.mask.mean():.1%} fg)", fontsize=10)

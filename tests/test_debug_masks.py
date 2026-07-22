@@ -36,3 +36,30 @@ def test_band_step_is_light_no_recompute():
         AssertionError("band step must not trigger heavy recompute"))
     t._on_band(5)
     assert t.band == 5
+
+
+def test_band_step_refreshes_color_scale():
+    # regression: _im_band.set_data() alone freezes vmin/vmax at the first
+    # band's range; stepping to a band with a different intensity range must
+    # refresh the color limits too, or the image looks washed-out/saturated.
+    t = _tuner()
+    t._on_band(0)
+    lo0, hi0 = t._im_band.get_clim()
+
+    # pick the band whose (decimated) data range differs most from band 0
+    band = t.cube[:, :, 0]
+    step = max(1, int(np.ceil(max(band.shape) / debug_masks.MAX_DISPLAY)))
+    sl = (slice(None, None, step), slice(None, None, step))
+    ranges = [float(t.cube[:, :, b][sl].max() - t.cube[:, :, b][sl].min())
+              for b in range(t.bands)]
+    b = int(np.argmax(ranges))
+    assert b != 0  # sanity: the synthetic cube must actually vary across bands
+
+    t._on_band(b)
+    lo1, hi1 = t._im_band.get_clim()
+    expected_lo = float(t.cube[:, :, b][sl].min())
+    expected_hi = float(t.cube[:, :, b][sl].max())
+
+    assert (lo1, hi1) != (lo0, hi0)
+    assert lo1 == expected_lo
+    assert hi1 == expected_hi
