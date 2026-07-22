@@ -12,7 +12,7 @@ Panels
 
 Controls
     radios    method: sam | mahalanobis | kmeans      threshold: otsu | percentile
-    sliders   band | percentile | open iter | close iter | min area |
+    sliders   band | mask window | open iter | close iter | min area |
               ROI patch | ROI stride | min coverage
     keys      left/right = step band, 'p' = print configs, 'm' = toggle mask overlay
 
@@ -40,7 +40,7 @@ from scipy import ndimage as ndi
 
 from hsi_workflow.config import DATASETS, PieceConfig, RoiConfig
 from hsi_workflow.cube_io import load_cube, iter_cube_paths
-from hsi_workflow.pieces import foreground_distance, _threshold_mask, clean_mask, label_pieces
+from hsi_workflow.pieces import foreground_distance, clean_mask, label_pieces
 from debug_common import Debouncer
 
 MAX_DISPLAY = 500
@@ -164,10 +164,8 @@ class MaskTuner:
         c = self.piece_cfg
         self.s_band = slider(0.08, 0.26, 0.28, "band", 0, self.bands - 1, self.band, 1)
         ax_rng = self.fig.add_axes([0.08, 0.22, 0.28, 0.025])
-        d = self.dist_for_init if hasattr(self, "dist_for_init") else None
-        lo0, hi0 = (0.0, 1.0)
         self.s_range = RangeSlider(ax_rng, "mask window", 0.0, 1.0,
-                                   valinit=(lo0, hi0))
+                                   valinit=(0.0, 1.0))
         self.s_range.on_changed(self._on_range)
         self.s_open = slider(0.08, 0.18, 0.28, "open iter", 0, 8, c.open_iter, 1)
         self.s_close = slider(0.08, 0.14, 0.28, "close iter", 0, 15, c.close_iter, 1)
@@ -280,9 +278,7 @@ class MaskTuner:
         self.s_range.valmin = lo
         self.s_range.valmax = hi
         self.s_range.ax.set_xlim(lo, hi)
-        cur = self.s_range.val
-        self.s_range.set_val((max(lo, min(cur[0], hi)),
-                              max(lo, min(cur[1], hi))))
+        self.s_range.set_val((lo, hi))
 
     def _on_range(self, _):
         self._debouncer.mark_dirty()
@@ -300,7 +296,9 @@ class MaskTuner:
 
     def _on_method(self, label):
         self.piece_cfg = replace(self.piece_cfg, method=label)
-        self._recompute()
+        dist = self._distance()
+        self._reset_range_bounds(dist)
+        self._on_thresh(self.piece_cfg.threshold)
 
     def _on_thresh(self, label):
         self.piece_cfg = replace(self.piece_cfg, threshold=label)

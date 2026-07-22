@@ -77,3 +77,23 @@ def test_value_window_limits_mask_to_range():
     # mask keeps only surviving pieces, so it must be a subset of the window
     assert t.mask.sum() <= expected.sum()
     assert not (t.mask & ~expected).any()
+
+
+def test_method_switch_resnaps_window():
+    t = _tuner()
+    t._on_method("mahalanobis")
+    lo, hi = t.s_range.val
+    dist = t.dist
+    # window high handle rides the new distance max, low is a sane cutoff inside bounds
+    assert hi == t.s_range.valmax
+    assert t.s_range.valmin <= lo <= t.s_range.valmax
+    # the raw value-window itself isn't collapsed to a near-empty sliver of the
+    # new (much larger) distance scale -- this is the regression: a stale
+    # absolute (lo, hi) from the old method's scale would leave almost nothing
+    # in range once bounds jump from e.g. sam's [0, pi/2] to mahalanobis's
+    # unbounded scale. (Whether pieces then *survive* min_area/morphology
+    # cleanup is a separate, unrelated concern -- this fixture's default
+    # min_area=1000 filters out every synthetic piece regardless of method,
+    # so we check the window against the distance map directly.)
+    window = (dist >= lo) & (dist <= hi)
+    assert window.mean() > 0.05
