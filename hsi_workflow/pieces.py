@@ -27,8 +27,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy import ndimage as ndi
 
-from config import PieceConfig
-from cube_io import Cube
+from .config import PieceConfig
+from .cube_io import Cube
 
 
 @dataclass
@@ -132,7 +132,7 @@ def foreground_distance(cube: np.ndarray, cfg: PieceConfig) -> np.ndarray:
         frame[:, :width] = frame[:, -width:] = True
         dist = _mahalanobis_to_background(flat, cube[frame])
     elif cfg.method == "kmeans":
-        from segmentation import segment
+        from .segmentation import segment
         seg = segment(cube, invert=False, seed=cfg.seed)
         # segment() calls the larger cluster "substrate"; here substrate==background,
         # so foreground distance is simply the foreground membership as {0,1}.
@@ -170,6 +170,11 @@ def clean_mask(mask: np.ndarray, cfg: PieceConfig) -> np.ndarray:
     return out
 
 
+def component_sizes(labels: np.ndarray) -> np.ndarray:
+    """Pixel count per label id. ``sizes[i]`` = size of label ``i`` (0 = background)."""
+    return np.bincount(labels.ravel())
+
+
 def label_pieces(mask: np.ndarray, cfg: PieceConfig) -> Tuple[np.ndarray, List[int]]:
     """Label connected components, keeping only those >= ``min_area``.
 
@@ -189,10 +194,8 @@ def label_pieces(mask: np.ndarray, cfg: PieceConfig) -> Tuple[np.ndarray, List[i
     else:
         labels, _ = ndi.label(mask)
 
-    kept = []
-    for lbl in range(1, int(labels.max()) + 1):
-        if int((labels == lbl).sum()) >= cfg.min_area:
-            kept.append(lbl)
+    sizes = component_sizes(labels)
+    kept = [lbl for lbl in range(1, sizes.size) if sizes[lbl] >= cfg.min_area]
     return labels, kept
 
 
