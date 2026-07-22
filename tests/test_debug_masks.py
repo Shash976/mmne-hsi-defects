@@ -63,3 +63,17 @@ def test_band_step_refreshes_color_scale():
     assert (lo1, hi1) != (lo0, hi0)
     assert lo1 == expected_lo
     assert hi1 == expected_hi
+
+
+def test_value_window_limits_mask_to_range():
+    t = _tuner()
+    dist = t.dist
+    lo = float(np.percentile(dist, 80))
+    hi = float(dist.max())
+    t.s_range.set_val((lo, hi))
+    t._on_range(None)
+    t._debouncer._on_release(None)
+    expected = (dist >= lo) & (dist <= hi)
+    # mask keeps only surviving pieces, so it must be a subset of the window
+    assert t.mask.sum() <= expected.sum()
+    assert not (t.mask & ~expected).any()

@@ -34,7 +34,7 @@ from dataclasses import replace
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, RadioButtons
+from matplotlib.widgets import Slider, RadioButtons, RangeSlider
 from matplotlib.collections import PatchCollection
 from scipy import ndimage as ndi
 
@@ -104,6 +104,8 @@ class MaskTuner:
         self._build_figure()
         self._debouncer = Debouncer(self.fig.canvas, self._recompute)
         self._recompute()
+        self._reset_range_bounds(self.dist)
+        self._on_thresh(self.piece_cfg.threshold)
 
     # --- pipeline ---------------------------------------------------------
 
@@ -117,7 +119,10 @@ class MaskTuner:
 
     def _recompute(self):
         dist = self._distance()
-        mask = _threshold_mask(dist, self.piece_cfg)
+        if not np.isclose(self.s_range.valmax, float(dist.max())):
+            self._reset_range_bounds(dist)
+        lo, hi = self.s_range.val
+        mask = (dist >= lo) & (dist <= hi)
         mask = clean_mask(mask, self.piece_cfg)
         labels, kept = label_pieces(mask, self.piece_cfg)
         self.dist, self.kept = dist, kept
@@ -158,7 +163,12 @@ class MaskTuner:
 
         c = self.piece_cfg
         self.s_band = slider(0.08, 0.26, 0.28, "band", 0, self.bands - 1, self.band, 1)
-        self.s_pct = slider(0.08, 0.22, 0.28, "percentile", 50, 99, c.threshold_percentile, 0.5)
+        ax_rng = self.fig.add_axes([0.08, 0.22, 0.28, 0.025])
+        d = self.dist_for_init if hasattr(self, "dist_for_init") else None
+        lo0, hi0 = (0.0, 1.0)
+        self.s_range = RangeSlider(ax_rng, "mask window", 0.0, 1.0,
+                                   valinit=(lo0, hi0))
+        self.s_range.on_changed(self._on_range)
         self.s_open = slider(0.08, 0.18, 0.28, "open iter", 0, 8, c.open_iter, 1)
         self.s_close = slider(0.08, 0.14, 0.28, "close iter", 0, 15, c.close_iter, 1)
         self.s_area = slider(0.08, 0.10, 0.28, "min area", 0, 20000, c.min_area, 100)
@@ -167,7 +177,7 @@ class MaskTuner:
         self.s_cov = slider(0.55, 0.14, 0.28, "min coverage", 0.3, 1.0, self.roi_cfg.min_coverage, 0.05)
 
         self.s_band.on_changed(lambda v: self._on_band(int(v)))
-        for s in (self.s_pct, self.s_open, self.s_close, self.s_area,
+        for s in (self.s_open, self.s_close, self.s_area,
                   self.s_patch, self.s_stride, self.s_cov):
             s.on_changed(self._on_param)
 
@@ -263,10 +273,23 @@ class MaskTuner:
                 f"({self.mask.mean():.1%} fg)", fontsize=10)
             self.fig.canvas.draw_idle()
 
+    def _reset_range_bounds(self, dist):
+        lo, hi = float(dist.min()), float(dist.max())
+        if hi <= lo:
+            hi = lo + 1e-9
+        self.s_range.valmin = lo
+        self.s_range.valmax = hi
+        self.s_range.ax.set_xlim(lo, hi)
+        cur = self.s_range.val
+        self.s_range.set_val((max(lo, min(cur[0], hi)),
+                              max(lo, min(cur[1], hi))))
+
+    def _on_range(self, _):
+        self._debouncer.mark_dirty()
+
     def _on_param(self, _):
         self.piece_cfg = replace(
             self.piece_cfg,
-            threshold_percentile=float(self.s_pct.val),
             open_iter=int(self.s_open.val), close_iter=int(self.s_close.val),
             min_area=int(self.s_area.val))
         patch = int(self.s_patch.val)
@@ -281,6 +304,14 @@ class MaskTuner:
 
     def _on_thresh(self, label):
         self.piece_cfg = replace(self.piece_cfg, threshold=label)
+        dist = self._distance()
+        if label == "otsu":
+            from skimage.filters import threshold_otsu
+            cutoff = float(threshold_otsu(dist))
+        else:
+            cutoff = float(np.percentile(dist, self.piece_cfg.threshold_percentile))
+        _, hi = self.s_range.val
+        self.s_range.set_val((min(cutoff, hi), hi))
         self._recompute()
 
     def _on_key(self, event):
