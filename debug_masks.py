@@ -35,11 +35,13 @@ from dataclasses import replace
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
+from matplotlib.collections import PatchCollection
 from scipy import ndimage as ndi
 
 from hsi_workflow.config import DATASETS, PieceConfig, RoiConfig
-from hsi_workflow.io import load_cube, iter_cube_paths
+from hsi_workflow.cube_io import load_cube, iter_cube_paths
 from hsi_workflow.pieces import foreground_distance, _threshold_mask, clean_mask, label_pieces
+from debug_common import Debouncer
 
 MAX_DISPLAY = 500
 
@@ -51,9 +53,13 @@ def synthetic_cube(rows=300, cols=300, bands=100, seed=0):
     dish = 0.15 + 0.02 * np.sin(wl / 90)
     piece = 0.5 + 0.2 * np.sin(wl / 150 + 1.0)
     cube = np.tile(dish, (rows, cols, 1))
+    margin = max(2, min(rows, cols) // 10)
+    h_lo, h_hi = max(4, rows // 8), max(5, rows // 4)
+    w_lo, w_hi = max(4, cols // 8), max(5, cols // 4)
     for _ in range(5):
-        r, c = rng.integers(30, rows - 90), rng.integers(30, cols - 90)
-        h, w = rng.integers(40, 80), rng.integers(40, 80)
+        h, w = rng.integers(h_lo, h_hi), rng.integers(w_lo, w_hi)
+        r = rng.integers(margin, max(margin + 1, rows - h - margin))
+        c = rng.integers(margin, max(margin + 1, cols - w - margin))
         cube[r:r + h, c:c + w, :] = piece + rng.normal(0, 0.01, bands)
     cube += rng.normal(0, 0.01, cube.shape)
     return cube, wl
@@ -96,6 +102,7 @@ class MaskTuner:
         self._dist_cache = {}
 
         self._build_figure()
+        self._debouncer = Debouncer(self.fig.canvas, self._recompute)
         self._recompute()
 
     # --- pipeline ---------------------------------------------------------
@@ -178,54 +185,81 @@ class MaskTuner:
         self.fig.text(0.86, 0.07, "'p' = print configs\n'm' = toggle overlay\n"
                                   "←/→ = step band", fontsize=9, family="monospace")
 
+        self._im_band = self._im_dist = self._im_lab = None
+        self._overlay = None
+        self._roi_coll = None
+
     def _redraw(self):
         band = self.cube[:, :, self.band]
         step = max(1, int(np.ceil(max(band.shape) / MAX_DISPLAY)))
         sl = (slice(None, None, step), slice(None, None, step))
         extent = (0, band.shape[1], band.shape[0], 0)
 
-        ax = self.axes[0]; ax.clear()
-        ax.imshow(band[sl], cmap="gray", extent=extent)
-        if self.show_mask:
-            overlay = np.where(self.mask[sl], 1.0, np.nan)
-            ax.imshow(np.ma.masked_invalid(overlay), cmap="autumn", alpha=0.35,
-                      vmin=0, vmax=1, extent=extent)
+        # panel 0: band image + mask overlay
+        ax = self.axes[0]
+        if self._im_band is None:
+            ax.clear(); ax.axis("off")
+            self._im_band = ax.imshow(band[sl], cmap="gray", extent=extent)
+            self._overlay = ax.imshow(
+                np.ma.masked_invalid(np.where(self.mask[sl], 1.0, np.nan)),
+                cmap="autumn", alpha=0.35, vmin=0, vmax=1, extent=extent)
+        else:
+            self._im_band.set_data(band[sl])
+            self._overlay.set_data(
+                np.ma.masked_invalid(np.where(self.mask[sl], 1.0, np.nan)))
+        self._overlay.set_visible(self.show_mask)
         cov = self.mask.mean()
         ax.set_title(f"band {self.band} ({self.wl[self.band]:.0f} nm) + mask "
                      f"({cov:.1%} fg)", fontsize=10)
-        ax.axis("off")
 
-        ax = self.axes[1]; ax.clear()
-        ax.imshow(self.dist[sl], cmap="magma", extent=extent)
+        # panel 1: distance map
+        ax = self.axes[1]
+        if self._im_dist is None:
+            ax.clear(); ax.axis("off")
+            self._im_dist = ax.imshow(self.dist[sl], cmap="magma", extent=extent)
+        else:
+            self._im_dist.set_data(self.dist[sl])
+            self._im_dist.set_clim(float(self.dist.min()), float(self.dist.max()))
         ax.set_title(f"foreground distance ({self.piece_cfg.method}, "
                      f"{self.piece_cfg.threshold})", fontsize=10)
-        ax.axis("off")
 
-        ax = self.axes[2]; ax.clear()
+        # panel 2: labeled pieces + ROI grid
+        ax = self.axes[2]
         lab = np.where(self.labels[sl] > 0, self.labels[sl], np.nan)
         cm = plt.get_cmap("tab10").copy(); cm.set_bad("0.12")
-        ax.set_facecolor("0.12")
-        ax.imshow(np.ma.masked_invalid(lab % 10), cmap=cm, vmin=0, vmax=9,
-                  interpolation="nearest", extent=extent)
+        if self._im_lab is None:
+            ax.clear(); ax.axis("off"); ax.set_facecolor("0.12")
+            self._im_lab = ax.imshow(np.ma.masked_invalid(lab % 10), cmap=cm,
+                                     vmin=0, vmax=9, interpolation="nearest",
+                                     extent=extent)
+        else:
+            self._im_lab.set_data(np.ma.masked_invalid(lab % 10))
+        if self._roi_coll is not None:
+            self._roi_coll.remove()
         p = self.roi_cfg.patch
-        for (r, c) in self.roi_boxes:
-            ax.add_patch(plt.Rectangle((c, r), p, p, fill=False, ec="white", lw=0.6))
+        rects = [plt.Rectangle((c, r), p, p) for (r, c) in self.roi_boxes]
+        self._roi_coll = PatchCollection(rects, facecolor="none",
+                                         edgecolor="white", linewidth=0.6)
+        ax.add_collection(self._roi_coll)
         n_rois = sum(self.roi_counts.values())
         ax.set_title(f"{len(self.kept)} piece(s), {n_rois} ROI(s) "
                      f"[patch {p}, stride {self.roi_cfg.stride}]", fontsize=10)
-        ax.axis("off")
 
-        sizes = sorted((int((self.labels == l).sum()) for l in self.kept), reverse=True)
-        print(f"pieces: {len(self.kept)}  sizes(px): {sizes[:8]}"
-              f"{'...' if len(sizes) > 8 else ''}  ROIs/piece: "
-              f"{[self.roi_counts[l] for l in self.kept][:8]}")
         self.fig.canvas.draw_idle()
 
     # --- events -------------------------------------------------------------
 
     def _on_band(self, b):
-        self.band = b
-        self._redraw()
+        self.band = int(b)
+        band = self.cube[:, :, self.band]
+        step = max(1, int(np.ceil(max(band.shape) / MAX_DISPLAY)))
+        sl = (slice(None, None, step), slice(None, None, step))
+        if self._im_band is not None:
+            self._im_band.set_data(band[sl])
+            self.axes[0].set_title(
+                f"band {self.band} ({self.wl[self.band]:.0f} nm) + mask "
+                f"({self.mask.mean():.1%} fg)", fontsize=10)
+            self.fig.canvas.draw_idle()
 
     def _on_param(self, _):
         self.piece_cfg = replace(
@@ -237,7 +271,7 @@ class MaskTuner:
         self.roi_cfg = replace(self.roi_cfg, patch=patch,
                                stride=max(1, int(self.s_stride.val)),
                                min_coverage=float(self.s_cov.val))
-        self._recompute()
+        self._debouncer.mark_dirty()
 
     def _on_method(self, label):
         self.piece_cfg = replace(self.piece_cfg, method=label)
