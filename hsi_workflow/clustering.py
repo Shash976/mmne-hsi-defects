@@ -16,7 +16,7 @@ from typing import Callable, Dict, Optional
 
 import numpy as np
 
-from config import ClusterConfig
+from .config import ClusterConfig
 
 
 @dataclass

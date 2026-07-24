@@ -26,9 +26,9 @@ from typing import Optional
 import numpy as np
 from scipy.signal import savgol_filter
 
-from config import PreprocessConfig
-from cube_io import Cube, load_reference_spectrum
-from segmentation import segment, Segmentation
+from .config import PreprocessConfig
+from .cube_io import Cube, load_reference_spectrum
+from .segmentation import segment, Segmentation
 
 
 @dataclass

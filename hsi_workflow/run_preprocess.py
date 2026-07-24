@@ -12,16 +12,25 @@ substrate/white/reference_scan to inspect the legacy OD signal.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import os
 
 import numpy as np
 
-from config import DATASETS, PreprocessConfig
-from cube_io import load_cube, iter_cube_paths
-from preprocessing import preprocess
-from optical_density import to_optical_density
-from viz import save_preprocess_preview
+from .config import DATASETS, PreprocessConfig
+from .cube_io import load_cube, iter_cube_paths
+from .preprocessing import preprocess
+from .optical_density import to_optical_density
+from .viz import save_preprocess_preview
 
 DEFAULT_OUT = os.path.join("out", "workflow", "preprocessing")
 

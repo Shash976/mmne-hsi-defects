@@ -19,8 +19,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from pieces import Piece
-from viz import pseudo_rgb
+from .pieces import Piece
+from .viz import pseudo_rgb
 
 
 def spectral_variance_map(cube: np.ndarray, mask: Optional[np.ndarray] = None) -> np.ndarray:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 from scipy import ndimage as ndi
 
-from config import PostprocConfig
+from .config import PostprocConfig
 
 
 def clean_binary_map(flag: np.ndarray, cfg: PostprocConfig) -> np.ndarray:

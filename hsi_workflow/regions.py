@@ -14,7 +14,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from anomaly import MahalanobisDetector
+from .anomaly import MahalanobisDetector
 
 
 @dataclass

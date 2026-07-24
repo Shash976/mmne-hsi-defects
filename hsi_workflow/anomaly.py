@@ -26,7 +26,7 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from config import AnomalyConfig
+from .config import AnomalyConfig
 
 
 def _subsample(X: np.ndarray, cap: int, seed: int) -> np.ndarray:

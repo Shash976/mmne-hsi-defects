@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import spectral
 
-from config import DatasetConfig
+from .config import DatasetConfig
 
 
 @dataclass

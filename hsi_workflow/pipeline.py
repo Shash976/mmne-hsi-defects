@@ -30,18 +30,18 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
-from cube_io import Cube, iter_cube_paths, load_dataset_cube
-from pieces import Piece, extract_pieces
-from preprocessing import preprocess, saturation_mask
-from decomposition import fit_pca, PcaModel
-from clustering import cluster, cluster_map, cluster_metrics, ClusterResult
-from anomaly import (fit_detectors, MahalanobisDetector, anomaly_map,
+from .config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
+from .cube_io import Cube, iter_cube_paths, load_dataset_cube
+from .pieces import Piece, extract_pieces
+from .preprocessing import preprocess, saturation_mask
+from .decomposition import fit_pca, PcaModel
+from .clustering import cluster, cluster_map, cluster_metrics, ClusterResult
+from .anomaly import (fit_detectors, MahalanobisDetector, anomaly_map,
                       flag_threshold, to_probability)
-from postprocess import clean_binary_map, label_regions
-from regions import (characterize_regions, regions_to_table, RegionStats,
+from .postprocess import clean_binary_map, label_regions
+from .regions import (characterize_regions, regions_to_table, RegionStats,
                       spectral_distance_map)
-from rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
+from .rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
 
 
 # --------------------------------------------------------------------------

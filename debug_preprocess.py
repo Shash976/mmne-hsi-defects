@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, CheckButtons
 
 from hsi_workflow.config import DATASETS
-from hsi_workflow.io import load_cube, iter_cube_paths, load_reference_spectrum
+from hsi_workflow.cube_io import load_cube, iter_cube_paths, load_reference_spectrum
 from hsi_workflow.preprocessing import (calibrate_reflectance, savgol_smooth,
                                         baseline_correct, normalize_intensity,
                                         noise_metrics)

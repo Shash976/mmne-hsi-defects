@@ -15,18 +15,27 @@ and the Stage-11 ``report.md``.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import os
 
 import numpy as np
 
-from config import DATASETS, WorkflowConfig, DEFAULT_BASELINE, ORGANIZED_DATA_ROOT
-from pipeline import run_workflow, pooled_foreground
-from clustering import compare_methods
-from anomaly import fit_detectors
-from rois import split_by_specimen
-from report import write_report
-from viz import save_pca_summary, save_analysis_figure, save_pca_scatter, save_spectral_histogram
+from .config import DATASETS, WorkflowConfig, DEFAULT_BASELINE, ORGANIZED_DATA_ROOT
+from .pipeline import run_workflow, pooled_foreground
+from .clustering import compare_methods
+from .anomaly import fit_detectors
+from .rois import split_by_specimen
+from .report import write_report
+from .viz import save_pca_summary, save_analysis_figure, save_pca_scatter, save_spectral_histogram
 
 DEFAULT_OUT = os.path.join("out", "workflow", "analyze")
 

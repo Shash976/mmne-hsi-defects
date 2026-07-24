@@ -24,13 +24,22 @@ the dataset presets); this tree is the analysis-ready, self-describing copy.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import json
 import os
 from datetime import datetime, timezone
 
-from config import DATASETS, WorkflowConfig, ORGANIZED_DATA_ROOT
-from dataset import export_dataset
+from .config import DATASETS, WorkflowConfig, ORGANIZED_DATA_ROOT
+from .dataset import export_dataset
 
 # The semiconductor datasets the document inventories. LIG is a test bed and is
 # organized only when asked for explicitly.

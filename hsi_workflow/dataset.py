@@ -34,12 +34,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from config import DatasetConfig, WorkflowConfig
-from cube_io import Cube, iter_cube_paths, load_dataset_cube, save_envi_cube
-from preprocessing import preprocess, saturation_mask, normalize_intensity
-from pieces import Piece, extract_pieces
-from rois import Roi, tile_rois, build_roi_table
-from viz import pseudo_rgb
+from .config import DatasetConfig, WorkflowConfig
+from .cube_io import Cube, iter_cube_paths, load_dataset_cube, save_envi_cube
+from .preprocessing import preprocess, saturation_mask, normalize_intensity
+from .pieces import Piece, extract_pieces
+from .rois import Roi, tile_rois, build_roi_table
+from .viz import pseudo_rgb
 
 
 def _reflectance_cube(raw_piece: Piece, src: Cube, ds_cfg: DatasetConfig,
