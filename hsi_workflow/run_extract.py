@@ -12,11 +12,20 @@ the aggregated ROI feature table. See docs/extraction.md.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import os
 
-from config import DATASETS, WorkflowConfig
-from dataset import export_dataset
+from .config import DATASETS, RoiConfig, WorkflowConfig
+from .dataset import export_dataset
 
 DEFAULT_OUT = os.path.join("out", "workflow", "extract")
 
@@ -33,15 +42,21 @@ def build_cfg(args) -> WorkflowConfig:
 
 def main():
     p = argparse.ArgumentParser(description="Hierarchical piece/ROI dataset export.")
-    p.add_argument("--dataset", default="sio2_bare_si", type=str.lower, choices=sorted(DATASETS))
+    p.add_argument("--dataset", default="sio2_dish_white_20", type=str.lower, choices=sorted(DATASETS))
     p.add_argument("--out", default=DEFAULT_OUT)
     p.add_argument("--radiometry", default="reflectance", choices=["reflectance", "raw"],
                    help="Save cropped cubes as calibrated reflectance (default) or raw DN.")
-    p.add_argument("--piece-method", default="sam", choices=["sam", "mahalanobis", "kmeans"])
+    p.add_argument("--piece-method", default="sam",
+                   choices=["sam", "euclidean", "mahalanobis", "kmeans"],
+                   help="Foreground backend. 'sam' keys on spectral shape and drops "
+                        "dark bare silicon; use 'euclidean' when a piece must "
+                        "include its substrate as well as the oxide.")
     p.add_argument("--min-area", type=int, default=1000)
-    p.add_argument("--patch", type=int, default=32)
-    p.add_argument("--stride", type=int, default=32)
-    p.add_argument("--min-coverage", type=float, default=0.85)
+    # ROI defaults track RoiConfig so the tuned patch/stride live in one place.
+    _roi = RoiConfig()
+    p.add_argument("--patch", type=int, default=_roi.patch)
+    p.add_argument("--stride", type=int, default=_roi.stride)
+    p.add_argument("--min-coverage", type=float, default=_roi.min_coverage)
     p.add_argument("--no-roi-cubes", action="store_true",
                    help="Skip writing per-ROI cubes (keep folders + roi_index.csv only).")
     args = p.parse_args()

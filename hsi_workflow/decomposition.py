@@ -18,7 +18,7 @@ from typing import Optional
 import numpy as np
 from sklearn.decomposition import PCA
 
-from config import PcaConfig
+from .config import PcaConfig
 
 
 @dataclass

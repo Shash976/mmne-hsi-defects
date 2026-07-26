@@ -82,11 +82,11 @@ flowchart TD
 python -m hsi_workflow.run_organize
 
 # 2. Stage-4 exploratory figures — pass BOTH materials for the Si-vs-SiO₂ check
-python -m hsi_workflow.run_explore  --dataset sio2_bare_si sio2_dish_black
+python -m hsi_workflow.run_explore  --dataset sio2_bare_si sio2_dish_white_20
 
 # 3. Full analysis: PCA → clustering → anomaly (within-film + Si-contrast) →
 #    regions → specimen-split evaluation → report.md
-python -m hsi_workflow.run_analyze  --target sio2_dish_black --baseline sio2_bare_si
+python -m hsi_workflow.run_analyze  --target sio2_dish_white_20 --baseline sio2_bare_si
 ```
 
 Step 1 writes `data/samples.csv` (the sample database), `data/manifest.json`, and
@@ -98,12 +98,18 @@ under `out/workflow/{explore,analyze}/...`, including the Stage-11 `report.md`.
 `p` to print paste-ready config snippets):
 
 ```bash
-python debug_preprocess.py --dataset sio2_bare_si     # SG window/SNV/baseline tuner
-python debug_masks.py      --dataset sio2_dish_black  # mask morphology + ROI grid tuner
-# both accept --crop R0 R1 C0 C1 for big scans and --demo for a synthetic cube
+python debug_preprocess.py --dataset sio2_dish_white_20  # SG window/SNV/baseline tuner
+python debug_masks.py      --dataset sio2_dish_white_20  # piece extraction + ROI grid tuner
+python debug_film.py       --dataset sio2_dish_white_20  # SiO2-within-wafer extractor
+# all accept --crop R0 R1 C0 C1 and --max-dim N for big scans, and --demo (no data)
 ```
 
-Plus `notebooks/playground.ipynb` for ad-hoc exploration with the same API.
+The tuners are debounced and downsample the whole scan for responsiveness. In
+`debug_masks.py`, press `R` to drag a **clean-background reference box** (the key
+fix for the messy white-dish extraction), and toggle **flat field** / **calibrate**.
+See **[docs/debug_tools.md](docs/debug_tools.md)** for a step-by-step tuning guide.
+Plus `notebooks/playground.ipynb` and `notebooks/sio2_extraction.ipynb` for ad-hoc
+exploration with the same API.
 
 > Run everything in the `hsi` conda env: `conda run -n hsi python -m hsi_workflow...`
 
@@ -122,6 +128,8 @@ Detailed docs live in [`docs/`](docs/):
 | [analysis.md](docs/analysis.md) | PCA, clustering, anomaly scoring, cleanup, region tables |
 | [usage.md](docs/usage.md) | Every CLI, its arguments, and how to read the outputs |
 | [tuning.md](docs/tuning.md) | Knobs, gotchas, known limitations, and future work |
+| [debug_tools.md](docs/debug_tools.md) | Step-by-step guide to the interactive tuners (extraction/film/preprocess) |
+| [audit-vs-objective.md](docs/audit-vs-objective.md) | Stage-by-stage audit against the source spec: what matches, deliberate deviations, open gaps |
 
 ---
 
@@ -133,7 +141,8 @@ data/                 sample database + organized Specimen→Piece→ROI tree (r
 docs/                 detailed documentation
 notebooks/            playground.ipynb — ad-hoc exploration scratchpad
 debug_preprocess.py   interactive filter/window tuner (sliders, live noise metrics)
-debug_masks.py        interactive mask/extraction/ROI tuner
+debug_masks.py        interactive piece-extraction/ROI tuner (reference box, flat-field)
+debug_film.py         interactive SiO2-within-wafer extractor (FilmConfig tuner)
 band_viewer.py        multi-cube band viewer (calibration sanity checks)
 legacy/               earlier LIG analysis (RX/Mahalanobis, PCA/KMeans) — reference only
 reference/            external reference code (not used by the pipeline)

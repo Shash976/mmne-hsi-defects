@@ -3,7 +3,7 @@
   "material": "sio2",
   "radiometry": "reflectance",
   "n_pieces": 15,
-  "n_rois": 29,
+  "n_rois": 4308,
   "pieces": [
     {
       "piece_id": "sio2 all 20 dish white_p01",
@@ -21,8 +21,8 @@
         256,
         300
       ],
-      "n_foreground_px": 22040,
-      "n_rois": 10,
+      "n_foreground_px": 21106,
+      "n_rois": 1148,
       "radiometry": "reflectance"
     },
     {
@@ -41,8 +41,8 @@
         135,
         300
       ],
-      "n_foreground_px": 8291,
-      "n_rois": 2,
+      "n_foreground_px": 7786,
+      "n_rois": 391,
       "radiometry": "reflectance"
     },
     {
@@ -61,8 +61,8 @@
         118,
         300
       ],
-      "n_foreground_px": 7117,
-      "n_rois": 3,
+      "n_foreground_px": 6831,
+      "n_rois": 372,
       "radiometry": "reflectance"
     },
     {
@@ -81,8 +81,8 @@
         128,
         300
       ],
-      "n_foreground_px": 6941,
-      "n_rois": 2,
+      "n_foreground_px": 6584,
+      "n_rois": 341,
       "radiometry": "reflectance"
     },
     {
@@ -101,8 +101,8 @@
         111,
         300
       ],
-      "n_foreground_px": 6738,
-      "n_rois": 3,
+      "n_foreground_px": 6473,
+      "n_rois": 351,
       "radiometry": "reflectance"
     },
     {
@@ -121,8 +121,8 @@
         95,
         300
       ],
-      "n_foreground_px": 6406,
-      "n_rois": 2,
+      "n_foreground_px": 6124,
+      "n_rois": 333,
       "radiometry": "reflectance"
     },
     {
@@ -141,8 +141,8 @@
         114,
         300
       ],
-      "n_foreground_px": 5634,
-      "n_rois": 3,
+      "n_foreground_px": 5278,
+      "n_rois": 269,
       "radiometry": "reflectance"
     },
     {
@@ -161,8 +161,8 @@
         84,
         300
       ],
-      "n_foreground_px": 5536,
-      "n_rois": 2,
+      "n_foreground_px": 5266,
+      "n_rois": 282,
       "radiometry": "reflectance"
     },
     {
@@ -181,8 +181,8 @@
         77,
         300
       ],
-      "n_foreground_px": 5078,
-      "n_rois": 2,
+      "n_foreground_px": 4823,
+      "n_rois": 257,
       "radiometry": "reflectance"
     },
     {
@@ -201,8 +201,8 @@
         123,
         300
       ],
-      "n_foreground_px": 4129,
-      "n_rois": 0,
+      "n_foreground_px": 3765,
+      "n_rois": 176,
       "radiometry": "reflectance"
     },
     {
@@ -221,8 +221,8 @@
         60,
         300
       ],
-      "n_foreground_px": 3400,
-      "n_rois": 0,
+      "n_foreground_px": 3107,
+      "n_rois": 144,
       "radiometry": "reflectance"
     },
     {
@@ -241,8 +241,8 @@
         79,
         300
       ],
-      "n_foreground_px": 2159,
-      "n_rois": 0,
+      "n_foreground_px": 1954,
+      "n_rois": 85,
       "radiometry": "reflectance"
     },
     {
@@ -261,8 +261,8 @@
         73,
         300
       ],
-      "n_foreground_px": 2036,
-      "n_rois": 0,
+      "n_foreground_px": 1845,
+      "n_rois": 80,
       "radiometry": "reflectance"
     },
     {
@@ -281,8 +281,8 @@
         62,
         300
       ],
-      "n_foreground_px": 1537,
-      "n_rois": 0,
+      "n_foreground_px": 1386,
+      "n_rois": 59,
       "radiometry": "reflectance"
     },
     {
@@ -301,8 +301,8 @@
         66,
         300
       ],
-      "n_foreground_px": 1101,
-      "n_rois": 0,
+      "n_foreground_px": 878,
+      "n_rois": 20,
       "radiometry": "reflectance"
     }
   ]

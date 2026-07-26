@@ -3,7 +3,7 @@
   "material": "silicon",
   "radiometry": "reflectance",
   "n_pieces": 9,
-  "n_rois": 20,
+  "n_rois": 2872,
   "pieces": [
     {
       "piece_id": "bare silicon all_p01",
@@ -21,8 +21,8 @@
         188,
         300
       ],
-      "n_foreground_px": 23358,
-      "n_rois": 11,
+      "n_foreground_px": 22522,
+      "n_rois": 1248,
       "radiometry": "reflectance"
     },
     {
@@ -41,8 +41,8 @@
         138,
         300
       ],
-      "n_foreground_px": 6527,
-      "n_rois": 3,
+      "n_foreground_px": 6223,
+      "n_rois": 338,
       "radiometry": "reflectance"
     },
     {
@@ -61,8 +61,8 @@
         61,
         300
       ],
-      "n_foreground_px": 5428,
-      "n_rois": 2,
+      "n_foreground_px": 5144,
+      "n_rois": 279,
       "radiometry": "reflectance"
     },
     {
@@ -81,8 +81,8 @@
         104,
         300
       ],
-      "n_foreground_px": 4957,
-      "n_rois": 2,
+      "n_foreground_px": 4735,
+      "n_rois": 252,
       "radiometry": "reflectance"
     },
     {
@@ -101,8 +101,8 @@
         106,
         300
       ],
-      "n_foreground_px": 4046,
-      "n_rois": 1,
+      "n_foreground_px": 3791,
+      "n_rois": 195,
       "radiometry": "reflectance"
     },
     {
@@ -121,8 +121,8 @@
         69,
         300
       ],
-      "n_foreground_px": 3767,
-      "n_rois": 1,
+      "n_foreground_px": 3528,
+      "n_rois": 178,
       "radiometry": "reflectance"
     },
     {
@@ -141,8 +141,8 @@
         107,
         300
       ],
-      "n_foreground_px": 3383,
-      "n_rois": 0,
+      "n_foreground_px": 3163,
+      "n_rois": 156,
       "radiometry": "reflectance"
     },
     {
@@ -161,8 +161,8 @@
         107,
         300
       ],
-      "n_foreground_px": 2815,
-      "n_rois": 0,
+      "n_foreground_px": 2586,
+      "n_rois": 123,
       "radiometry": "reflectance"
     },
     {
@@ -181,8 +181,8 @@
         49,
         300
       ],
-      "n_foreground_px": 2365,
-      "n_rois": 0,
+      "n_foreground_px": 2170,
+      "n_rois": 103,
       "radiometry": "reflectance"
     }
   ]

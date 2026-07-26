@@ -66,9 +66,14 @@ changes elsewhere. Current presets in `config.DATASETS`:
 |---|---|---|
 | `lig` | LIG ROI scans (paired) | lig (test bed) |
 | `sio2_bare_si` | `bare silicon all.bip` | **silicon** (baseline) |
-| `sio2_dish_white_20` | `sio2 all 20 dish white.bil` | sio2 |
-| `sio2_dish_black` | `Dish on Black - 1.bip` | sio2 |
-| `sio2_dish_white_1` | `Dish on White 1.bip` | sio2 |
+| `sio2_dish_white_20` | `sio2 all 20 dish white.bil` | **sio2** (the target) |
+| `sio2_dish_black` | `Dish on Black - 1.bip` | sio2 — *retired* ⚠️ |
+| `sio2_dish_white_1` | `Dish on White 1.bip` | sio2 — *retired* ⚠️ |
+
+⚠️ The two retired scans have been moved to `<hsi_root>/sio2/legacy/`, so their
+presets now resolve to zero cubes and `prepare_pieces` raises `FileNotFoundError`.
+Their earlier output is still under `data/organized/`. Restore the raw files (or
+repoint `data_dir`/`hdr_glob`) before using them again.
 
 `material` rides along from the dataset → `Cube` → `Piece` → `Roi`, so the anomaly
 stage can tell baseline from experimental. `DEFAULT_BASELINE = "sio2_bare_si"`.

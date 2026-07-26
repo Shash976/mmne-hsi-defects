@@ -24,18 +24,26 @@ the dataset presets); this tree is the analysis-ready, self-describing copy.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import json
 import os
 from datetime import datetime, timezone
 
-from config import DATASETS, WorkflowConfig, ORGANIZED_DATA_ROOT
-from dataset import export_dataset
+from .config import DATASETS, RoiConfig, WorkflowConfig, ORGANIZED_DATA_ROOT
+from .dataset import export_dataset
 
 # The semiconductor datasets the document inventories. LIG is a test bed and is
 # organized only when asked for explicitly.
-DEFAULT_DATASETS = ["sio2_bare_si", "sio2_dish_black", "sio2_dish_white_1",
-                    "sio2_dish_white_20"]
+DEFAULT_DATASETS = ["sio2_bare_si", "sio2_dish_white_20"]
 
 
 def build_samples_rows(manifest: dict) -> list:
@@ -67,9 +75,11 @@ def main():
     p.add_argument("--radiometry", default="reflectance", choices=["reflectance", "raw"])
     p.add_argument("--no-roi-cubes", action="store_true",
                    help="Skip per-ROI cubes (keep folders + roi_index.csv).")
-    p.add_argument("--patch", type=int, default=32)
-    p.add_argument("--stride", type=int, default=32)
-    p.add_argument("--min-coverage", type=float, default=0.85)
+    # ROI defaults track RoiConfig so the tuned patch/stride live in one place.
+    _roi = RoiConfig()
+    p.add_argument("--patch", type=int, default=_roi.patch)
+    p.add_argument("--stride", type=int, default=_roi.stride)
+    p.add_argument("--min-coverage", type=float, default=_roi.min_coverage)
     args = p.parse_args()
 
     import pandas as pd

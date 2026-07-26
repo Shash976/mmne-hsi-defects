@@ -19,8 +19,8 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from config import RoiConfig
-from pieces import Piece
+from .config import RoiConfig
+from .pieces import Piece
 
 
 @dataclass

@@ -15,30 +15,44 @@ and the Stage-11 ``report.md``.
 
 from __future__ import annotations
 
+# Allow running this file directly (python run_xxx.py) as well as
+# as a module (python -m hsi_workflow.run_xxx). When run as a script the
+# package context is missing, so add the repo root and set __package__ so
+# the relative imports below resolve (PEP 366).
+if __package__ in (None, ""):
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    __package__ = "hsi_workflow"
+
 import argparse
 import os
 
 import numpy as np
 
-from config import DATASETS, WorkflowConfig, DEFAULT_BASELINE, ORGANIZED_DATA_ROOT
-from pipeline import run_workflow, pooled_foreground
-from clustering import compare_methods
-from anomaly import fit_detectors
-from rois import split_by_specimen
-from report import write_report
-from viz import save_pca_summary, save_analysis_figure, save_pca_scatter, save_spectral_histogram
+from .config import (DATASETS, PieceConfig, WorkflowConfig, DEFAULT_BASELINE,
+                     ORGANIZED_DATA_ROOT)
+from .pipeline import run_workflow, pooled_foreground
+from .clustering import compare_methods
+from .anomaly import fit_detectors
+from .rois import split_by_specimen
+from .report import write_report
+from .viz import save_pca_summary, save_analysis_figure, save_pca_scatter, save_spectral_histogram
 
 DEFAULT_OUT = os.path.join("out", "workflow", "analyze")
 
 
 def build_cfg(args) -> WorkflowConfig:
     wf = WorkflowConfig()
+    wf.piece.erode_iter = args.erode
     wf.pca.n_components = args.pca_components
     wf.cluster.method = args.cluster
     wf.cluster.n_clusters = args.n_clusters
     wf.anomaly.methods = args.anomaly
     wf.anomaly.fit_on = args.fit_on
     wf.anomaly.anomaly_percentile = args.anomaly_percentile
+    wf.film.enabled = args.extract_film
+    wf.film.reference = args.film_reference
+    wf.film.method = args.film_method
     return wf
 
 
@@ -102,6 +116,10 @@ def main():
     p.add_argument("--target", default="sio2_dish_white_20", choices=sorted(DATASETS))
     p.add_argument("--baseline", default=DEFAULT_BASELINE, choices=sorted(DATASETS))
     p.add_argument("--out", default=DEFAULT_OUT)
+    p.add_argument("--erode", type=int, default=PieceConfig().erode_iter,
+                   help="Shrink each piece's analysis mask by N px before ROI "
+                        "tiling/anomaly fitting. Boundary pixels mix film and dish "
+                        "spectra and otherwise dominate the flags. 0 disables.")
     p.add_argument("--pca-components", type=int, default=3)
     p.add_argument("--cluster", default="kmeans", choices=["kmeans", "dbscan", "gmm"])
     p.add_argument("--n-clusters", type=int, default=4)
@@ -116,6 +134,15 @@ def main():
     p.add_argument("--compare-clusters", action="store_true",
                    help="Also run kmeans/dbscan/gmm on the same features and "
                         "write a stability comparison CSV.")
+    p.add_argument("--extract-film", action="store_true",
+                   help="Narrow SiO2 pieces to their oxide sub-region before "
+                        "analysis (Stage 3.1b, film.py). Off by default.")
+    p.add_argument("--film-reference", default="control", choices=["control", "in_piece"],
+                   help="Bare-silicon reference for film extraction: the control "
+                        "dataset mean ('control') or each wafer's own bare region "
+                        "('in_piece').")
+    p.add_argument("--film-method", default="sam", choices=["sam", "mahalanobis", "kmeans"],
+                   help="Distance backend for film extraction.")
     args = p.parse_args()
 
     wf = build_cfg(args)

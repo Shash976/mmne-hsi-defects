@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from preprocessing import Preprocessed
+from .preprocessing import Preprocessed
 
 
 def pseudo_rgb(cube: np.ndarray, wavelengths: Optional[np.ndarray],
