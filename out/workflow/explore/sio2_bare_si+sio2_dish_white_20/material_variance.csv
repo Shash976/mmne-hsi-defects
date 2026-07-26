@@ -1,0 +1,27 @@
+piece_id,material,mean_spectral_variance
+bare silicon all_p01,silicon,0.0006933636290078605
+bare silicon all_p02,silicon,0.0006797048019754347
+bare silicon all_p03,silicon,0.0007723048330931008
+bare silicon all_p04,silicon,0.0008219641220238462
+bare silicon all_p05,silicon,0.0007234510411828788
+bare silicon all_p06,silicon,0.0007935946524896718
+bare silicon all_p07,silicon,0.0006915422841578348
+bare silicon all_p08,silicon,0.0006913048623904924
+bare silicon all_p09,silicon,0.0012408408981187335
+sio2 all 20 dish white_p01,sio2,0.0006885442820466449
+sio2 all 20 dish white_p02,sio2,0.000685150859784515
+sio2 all 20 dish white_p03,sio2,0.0008828765967484721
+sio2 all 20 dish white_p04,sio2,0.0005708625996229972
+sio2 all 20 dish white_p05,sio2,0.0006642595363875568
+sio2 all 20 dish white_p06,sio2,0.0009601399923495254
+sio2 all 20 dish white_p07,sio2,0.00035172621836675454
+sio2 all 20 dish white_p08,sio2,0.0006960275669420858
+sio2 all 20 dish white_p09,sio2,0.000716997666762217
+sio2 all 20 dish white_p10,sio2,0.0003786792304395037
+sio2 all 20 dish white_p11,sio2,0.0007153900859687374
+sio2 all 20 dish white_p12,sio2,0.00026074317500397927
+sio2 all 20 dish white_p13,sio2,0.0012493579090494934
+sio2 all 20 dish white_p14,sio2,0.00047402524062208144
+sio2 all 20 dish white_p15,sio2,0.0005263531479307255
+<all silicon>,silicon,0.0007897856804933172
+<all sio2>,sio2,0.0006547422738683526

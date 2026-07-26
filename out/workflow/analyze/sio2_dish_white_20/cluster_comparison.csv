@@ -1,0 +1,7 @@
+method,silhouette,davies_bouldin,calinski_harabasz,n_clusters,adjusted_rand_index
+kmeans,0.41086574660975256,0.776940650853865,35115.082041154754,4.0,
+dbscan,,,,1.0,
+gmm,0.2651136364542582,1.2011332489748925,20700.5265716762,4.0,
+kmeans|dbscan,,,,,0.0
+kmeans|gmm,,,,,0.4664320662446017
+dbscan|gmm,,,,,0.0
