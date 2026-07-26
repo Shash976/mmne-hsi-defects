@@ -126,6 +126,11 @@ SIO2_DISH_WHITE_1 = DatasetConfig(
 DATASETS = {cfg.name: cfg for cfg in (
     LIG, SIO2_BARE_SI, SIO2_DISH_WHITE_20, SIO2_DISH_BLACK, SIO2_DISH_WHITE_1,
 )}
+# Convenience alias so the CLI/tuners accept the shorthand the user says out loud
+# ("sio2_20"). It resolves to the same frozen config (name stays
+# "sio2_dish_white_20"), so organized-data folders and iter_cube_paths are
+# unaffected; it only adds an accepted --dataset choice.
+DATASETS["sio2_20"] = SIO2_DISH_WHITE_20
 
 # The default silicon baseline dataset used by the anomaly stage when a caller
 # does not pass its own baseline. Kept here so the choice is configurable in one
@@ -199,29 +204,115 @@ class PieceConfig:
     """Knobs for splitting a multi-piece scan into individual piece sub-cubes.
 
     The extractor estimates the dish/holder spectrum from a border frame and
-    flags foreground pixels by spectral distance (angle / Mahalanobis) over the
-    full band range -- never by RGB brightness. Morphology then cleans the mask:
+    flags foreground pixels by spectral distance over the full band range --
+    never by RGB brightness. Morphology then cleans the mask:
+
+    **Choosing ``method``.** ``"sam"`` (spectral angle) is scale-invariant: it
+    keys on spectral *shape* and ignores brightness. On wafers that are only
+    partly oxide-coated that is a trap -- bare silicon is dark but spectrally
+    smooth, close in shape to a bright dish, so SAM drops it and the mask keeps
+    only the interference-coloured SiO2 (measured on ``sio2_dish_white_20``: 85k
+    foreground px vs 179k, i.e. roughly half of each wafer lost). Use
+    ``"euclidean"`` when a piece should include dark substrate -- it is magnitude
+    sensitive but still uses all 300 bands. ``sam`` remains the default for
+    backward compatibility on datasets already tuned for it.
     ``opening`` removes thin rim arcs and dust; ``closing`` merges within-piece
     gaps (patterned SiO2 devices otherwise fragment); ``min_area`` drops anything
     too small to be a real piece.
+
+    ``erode_iter`` shrinks each piece's *analysis* mask inward after the crop is
+    fixed. Boundary pixels mix film and dish spectra, so without it the anomaly
+    detectors flag the piece rim rather than the film (pieces have been observed
+    at 100% edge share). The crop/bbox is unaffected -- only which pixels count
+    as film. Erosion is skipped for any piece it would erase entirely.
     """
 
-    method: str = "sam"               # {"sam", "mahalanobis", "kmeans"} foreground backend
+    method: str = "sam"               # {"sam", "euclidean", "mahalanobis", "kmeans"} backend
     border_width: int = 8             # px frame sampled to estimate the background spectrum
-    threshold: str = "otsu"           # {"otsu", "percentile"} on the distance map
+    threshold: str = "otsu"           # {"otsu", "percentile", "chi2"} on the distance map
     threshold_percentile: float = 80.0  # used when threshold="percentile"
+    # Used when threshold="chi2" (background ~ chi-square with df=n_bands).
+    # Pairs with method="mahalanobis", for which Otsu is unsuitable -- see
+    # pieces._threshold_mask and docs/tuning.md gotcha #3c.
+    chi2_quantile: float = 0.999
     open_iter: int = 2                # binary opening iterations (remove arcs/dust)
     close_iter: int = 6               # binary closing iterations (merge device structure)
     fill_holes: bool = True
     min_area: int = 1000              # px; components smaller than this are discarded
+    erode_iter: int = 1               # px shrink of each piece's analysis mask (0 = off)
     watershed_split: bool = False     # split touching pieces via distance-transform watershed
+    seed: int = 0
+    # --- Extraction-quality knobs (esp. for the white-dish 20-piece scan) ---
+    # When the auto border frame is a poor background estimate (two dishes, rim,
+    # paper, shadow), point ``background_bbox`` at a clean empty-dish region:
+    # (r0, r1, c0, c1) in the scan's pixel coords. Its spectra then define the
+    # background (mean for SAM, mean+cov for Mahalanobis) instead of the border.
+    background_bbox: Optional[Tuple[int, int, int, int]] = None
+    flat_field: bool = False          # divide out a smooth spatial illumination gradient first
+    flat_field_sigma: float = 30.0    # Gaussian sigma (px) of the flat-field estimate
+    on_reflectance: bool = False      # extract on calibrated reflectance (needs white/dark refs)
+
+    def validate(self) -> None:
+        if self.method not in ("sam", "euclidean", "mahalanobis", "kmeans"):
+            raise ValueError(f"piece method invalid: {self.method!r}")
+        if self.threshold not in ("otsu", "percentile", "chi2"):
+            raise ValueError(
+                f"threshold must be 'otsu', 'percentile' or 'chi2', got {self.threshold!r}")
+        if not 0 < self.chi2_quantile < 1:
+            raise ValueError("chi2_quantile must be in (0, 1)")
+        if self.erode_iter < 0:
+            raise ValueError("erode_iter must be >= 0")
+        if self.background_bbox is not None and len(self.background_bbox) != 4:
+            raise ValueError("background_bbox must be (r0, r1, c0, c1) or None")
+        if self.flat_field_sigma <= 0:
+            raise ValueError("flat_field_sigma must be > 0")
+
+
+# --------------------------------------------------------------------------
+# Stage 3.1b: SiO2 film extraction within a silicon piece
+# --------------------------------------------------------------------------
+
+@dataclass
+class FilmConfig:
+    """Knobs for isolating the SiO2 film sub-region inside an extracted piece.
+
+    A wafer piece is part bare silicon, part SiO2-covered. SiO2 on Si produces
+    thin-film interference, so its reflectance differs in *shape* from bare
+    silicon. This stage flags the SiO2 pixels within a piece's mask by spectral
+    distance from bare silicon -- the same idea as piece extraction, but
+    referencing silicon instead of the dish.
+
+    ``reference`` chooses what "bare silicon" means:
+
+    - ``"control"`` -- the mean spectrum of the external bare-silicon dataset (a
+      single global reference in the analysis space); SiO2 = pixels unlike it.
+    - ``"in_piece"`` -- estimate bare silicon from the wafer's own 2-cluster
+      split (robust to per-piece lighting); the control reference only
+      disambiguates which cluster is oxide.
+
+    Off the main analysis path by default (``enabled=False``); when enabled it
+    replaces the SiO2 pieces' foreground mask so PCA/anomaly run on oxide only.
+    """
+
+    enabled: bool = False
+    reference: str = "control"          # {"control", "in_piece"}
+    method: str = "sam"                 # {"sam", "mahalanobis", "kmeans"}
+    threshold: str = "otsu"             # {"otsu", "percentile"} on in-mask distances
+    threshold_percentile: float = 80.0
+    open_iter: int = 1
+    close_iter: int = 2
+    fill_holes: bool = True
+    min_area: int = 100                 # px; oxide sub-regions are smaller than whole pieces
+    invert: bool = False                # flip when SiO2 is the majority of the wafer
     seed: int = 0
 
     def validate(self) -> None:
+        if self.reference not in ("control", "in_piece"):
+            raise ValueError(f"film reference invalid: {self.reference!r}")
         if self.method not in ("sam", "mahalanobis", "kmeans"):
-            raise ValueError(f"piece method invalid: {self.method!r}")
+            raise ValueError(f"film method invalid: {self.method!r}")
         if self.threshold not in ("otsu", "percentile"):
-            raise ValueError(f"threshold must be 'otsu' or 'percentile', got {self.threshold!r}")
+            raise ValueError(f"film threshold invalid: {self.threshold!r}")
 
 
 # --------------------------------------------------------------------------
@@ -236,10 +327,21 @@ class RoiConfig:
     a patch is kept only if at least ``min_coverage`` of it lies inside the piece
     mask (so ROIs never straddle dish/edges). Tune ``patch``/``stride`` so each
     piece yields ~100-300 ROIs (the document's target).
+
+    The defaults are sized for *these* specimens, not the document's hypothetical
+    1024x1024 image: the median extracted piece is only ~4,175 px, so 32x32
+    non-overlapping tiles yielded ~1-4 ROIs per piece (73 across all 41 pieces).
+    At 8/4 the measured yield is ~195 ROIs per piece (median), inside the target.
+
+    ``stride < patch`` means ROIs overlap, so patches within one piece are
+    spatially correlated. That is acceptable here only because the train/test
+    split holds out *whole specimens* (:func:`hsi_workflow.rois.split_by_specimen`),
+    so correlated patches never straddle the split -- which is exactly the leakage
+    the document warns about. Do not switch to a random per-ROI split.
     """
 
-    patch: int = 32
-    stride: int = 32                  # == patch => non-overlapping tiles
+    patch: int = 8
+    stride: int = 4                   # < patch => overlapping tiles (see leakage note above)
     min_coverage: float = 0.85        # fraction of patch pixels that must be in-mask
 
     def validate(self) -> None:
@@ -365,6 +467,7 @@ class WorkflowConfig:
 
     preprocess: PreprocessConfig = field(default_factory=PreprocessConfig)
     piece: PieceConfig = field(default_factory=PieceConfig)
+    film: FilmConfig = field(default_factory=FilmConfig)
     roi: RoiConfig = field(default_factory=RoiConfig)
     pca: PcaConfig = field(default_factory=PcaConfig)
     cluster: ClusterConfig = field(default_factory=ClusterConfig)
@@ -372,6 +475,6 @@ class WorkflowConfig:
     postproc: PostprocConfig = field(default_factory=PostprocConfig)
 
     def validate(self) -> None:
-        for stage in (self.preprocess, self.piece, self.roi, self.pca,
+        for stage in (self.preprocess, self.piece, self.film, self.roi, self.pca,
                       self.cluster, self.anomaly, self.postproc):
             stage.validate()

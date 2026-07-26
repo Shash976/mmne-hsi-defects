@@ -9,7 +9,7 @@ raw scan (e.g. 1417×900×300, ~20 SiO₂ pieces on a dish)
       │  pieces.extract_pieces  — spectral foreground + connected components
       ▼
 individual PIECE sub-cubes (one per fragment: bbox crop + mask, all 300 bands)
-      │  rois.tile_rois  — fixed 32×32 patch grid inside each piece mask
+      │  rois.tile_rois  — fixed patch grid (8×8, stride 4) inside each piece mask
       ▼
 ROIs (one mean-spectrum sample per patch) ──► pixel maps + cross-specimen ROI table
 ```
@@ -64,6 +64,14 @@ watershed split for touching pieces via `watershed_split`) and keeps components
 ≥ `min_area`. Each surviving component's **bounding box** is cropped out of the full
 cube. Pieces come back largest-first with ids `"<scan>_p01"`, `"<scan>_p02"`, …
 
+### 5. Erode the analysis mask
+
+`erode_iter` (default **1 px**) shrinks each piece's mask inward *after* the bbox
+is fixed. Boundary pixels are **mixed** (part film, part dish), so without this the
+anomaly detectors flag the rim rather than the film. The crop and bbox are
+unaffected — only which pixels count as film. If erosion would erase a piece
+entirely, the un-eroded mask is kept so no specimen drops out of the study.
+
 Each `Piece` carries:
 
 | Field | Meaning |
@@ -79,6 +87,43 @@ back as one `Piece` and downstream code is identical.
 **Persisting crops:** `dataset.export_dataset` (via `run_organize` /
 `run_extract`) writes each piece as its own calibrated ENVI `.hdr`/data pair plus
 a `*_mask.npy`, so a pipeline can restart from crops.
+
+### Extraction-quality knobs (esp. the white-dish 20-piece scan)
+
+The default border-frame background fails when the outer frame is contaminated
+(two dishes, rim, paper, shadow). Three `PieceConfig` knobs fix this — dial them in
+live with `debug_masks.py` (see [debug_tools.md](debug_tools.md)):
+
+- **`background_bbox=(r0,r1,c0,c1)`** — take the background spectrum from a clean
+  empty-dish region you specify, instead of the border. The single biggest lever.
+  In the tuner, press `R` and drag the box.
+- **`flat_field=True`** (+ `flat_field_sigma`) — divide out a smooth spatial
+  illumination gradient (`flat_field_correct`) before the distance is computed.
+- **`on_reflectance=True`** — find the piece masks on white/dark-calibrated
+  reflectance (the piece *data* is still cropped from the raw cube, so the
+  per-piece `preprocess()` still calibrates exactly once).
+
+---
+
+## SiO₂ film extraction (`film.py`) — Stage 3.1b
+
+A wafer piece is part bare silicon, part SiO₂. `extract_film(piece, cfg, ref)`
+isolates the oxide *within* a piece's mask, mirroring piece extraction but
+referencing **bare silicon** instead of the dish (SiO₂ on Si shows thin-film
+interference, so its reflectance differs in shape from bare silicon).
+
+`FilmConfig.reference` picks what "bare silicon" is:
+
+- **`"control"`** — the mean spectrum of the `sio2_bare_si` control dataset (one
+  global reference in the analysis space); SiO₂ = pixels unlike it.
+- **`"in_piece"`** — a 2-cluster split of the wafer; the bare cluster is the one
+  spectrally closest to the control reference. Robust to per-wafer lighting.
+
+Off the main path by default (`enabled=False`). Enable it with
+`run_analyze --extract-film [--film-reference control|in_piece]`: SiO₂ pieces then
+carry only their oxide mask, so PCA/clustering/anomaly run on the film alone
+(bare-silicon baseline pieces are never film-masked). Tune it live with
+`debug_film.py`.
 
 ---
 
@@ -119,9 +164,14 @@ the realistic evaluation the objective argues for: "how well does anomaly detect
 generalize to *new* samples?" `run_analyze` runs this automatically (when ≥ 2
 specimens have ROIs) and writes the held-out scores to `roi_evaluation.csv`.
 
-> **Sizing note:** the document targets ~100–300 ROIs per piece. That assumes large
-> images; small test pieces yield only a handful at 32×32. Shrink `patch` or
-> `stride` for more ROIs — see [tuning.md](tuning.md).
+> **Sizing note:** the document targets ~100–300 ROIs per piece, assuming large
+> images. These pieces are small (median ~4,175 foreground px), so the original
+> 32×32 non-overlapping grid yielded only ~1–4 ROIs per piece (73 across all 41).
+> The defaults are therefore `patch=8, stride=4`, measured at a median of ~195
+> ROIs per piece. Because `stride < patch` the patches **overlap**, so ROIs within
+> a piece are spatially correlated — safe only because `split_by_specimen` holds
+> out whole specimens (above). Never switch to a random per-ROI split.
+> See [tuning.md](tuning.md).
 
 ---
 

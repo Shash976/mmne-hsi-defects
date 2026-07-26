@@ -48,20 +48,35 @@ class Cube:
         return self.data.shape[-1]
 
 
+def _read_meta(img, hdr_path: str):
+    """Pull the header fields we act on from an opened SpyFile.
+
+    Returns ``(wavelengths, shutter, ceiling, label)`` -- shared by the eager
+    :func:`load_cube` and the lazy :class:`CubeReader` so both agree on how a
+    header maps onto our metadata.
+    """
+    wavelengths = (np.asarray(img.bands.centers, dtype=np.float64)
+                   if img.bands is not None and img.bands.centers is not None else None)
+    shutter = float(img.metadata.get("shutter", 1.0))
+    ceiling = float(img.metadata.get("ceiling", np.inf))
+    label = str(img.metadata.get("label") or _stem(hdr_path))
+    return wavelengths, shutter, ceiling, label
+
+
 def load_cube(hdr_path: str, material: str = "sio2") -> Cube:
     """Load one ENVI cube header/data pair into a ``Cube``.
 
     ``material`` tags the sample type (defaults to ``"sio2"``); callers that have
     a :class:`~hsi_workflow.config.DatasetConfig` should pass ``cfg.material`` so
     the tag propagates downstream (see :func:`load_dataset_cube`).
+
+    This materializes the *whole* cube as float64. For big scans that only need a
+    decimated view (the interactive tuners), prefer :func:`open_cube_reader`,
+    which never holds the full cube in memory.
     """
     img = spectral.open_image(hdr_path)
     data = np.asarray(img.load(), dtype=np.float64)
-    wavelengths = (np.asarray(img.bands.centers, dtype=np.float64)
-                   if img.bands is not None and img.bands.centers is not None else None)
-    shutter = float(img.metadata.get("shutter", 1.0))
-    ceiling = float(img.metadata.get("ceiling", np.inf))
-    label = str(img.metadata.get("label") or _stem(hdr_path))
+    wavelengths, shutter, ceiling, label = _read_meta(img, hdr_path)
     return Cube(data=data, wavelengths=wavelengths, shutter=shutter,
                 ceiling=ceiling, path=hdr_path, label=label, material=material)
 
@@ -69,6 +84,107 @@ def load_cube(hdr_path: str, material: str = "sio2") -> Cube:
 def load_dataset_cube(hdr_path: str, cfg: "DatasetConfig") -> Cube:
     """Load a cube, tagging it with the dataset preset's ``material``."""
     return load_cube(hdr_path, material=cfg.material)
+
+
+# --------------------------------------------------------------------------
+# Lazy reading (memory-bounded working views for the interactive tuners)
+# --------------------------------------------------------------------------
+
+class CubeReader:
+    """Memory-bounded reader over one ENVI cube (or an in-memory array).
+
+    The scans are multi-GB as float64 (e.g. 1417x900x300 -> ~2.9 GB), which does
+    not fit alongside everything else on a workstation. The tuners never need the
+    whole cube at full resolution: they compute on a *decimated* working grid and
+    only ever inspect a handful of *individual* pixel spectra at full resolution.
+    This reader serves exactly those two needs without materializing the cube:
+
+    - :meth:`decimated` streams contiguous row *blocks* off disk (BIL/BIP-friendly
+      -- strided ``img[::step]`` reads are ~30x slower here) and keeps every
+      ``step``-th row/col, so peak memory is one block, not the whole cube.
+    - :meth:`pixel` / :meth:`patch` read single pixels/small windows at full
+      resolution via the SpyFile's own indexing (interleave-correct, ~ms).
+
+    An optional ``crop`` ``(r0, r1, c0, c1)`` restricts every read to a spatial
+    window; region coordinates passed to the methods are relative to that crop,
+    matching the debug tools' existing ``--crop`` semantics. Backing the reader
+    with an ndarray instead (see :func:`array_cube_reader`) gives the same
+    interface for the synthetic/demo path, so callers stay backend-agnostic.
+    """
+
+    def __init__(self, *, img=None, arr=None, wavelengths=None, shutter=1.0,
+                 ceiling=np.inf, label="cube", material: str = "sio2",
+                 crop=None, block_rows: int = 128):
+        if (img is None) == (arr is None):
+            raise ValueError("CubeReader needs exactly one of img/arr")
+        self._img = img
+        self._arr = None if arr is None else np.asarray(arr)
+        self.wavelengths = wavelengths
+        self.shutter = shutter
+        self.ceiling = ceiling
+        self.label = label
+        self.material = material
+        self._block_rows = max(1, int(block_rows))
+
+        full_rows, full_cols = (self._arr.shape[:2] if img is None else img.shape[:2])
+        bands = (self._arr.shape[-1] if img is None else img.shape[-1])
+        r0, r1, c0, c1 = crop if crop is not None else (0, full_rows, 0, full_cols)
+        self._r0, self._r1 = int(r0), int(r1)
+        self._c0, self._c1 = int(c0), int(c1)
+        self.shape = (self._r1 - self._r0, self._c1 - self._c0, int(bands))
+
+    @property
+    def n_bands(self) -> int:
+        return self.shape[-1]
+
+    def decimated(self, step: int) -> np.ndarray:
+        """Dense float64 grid equal to ``region[::step, ::step, :]``.
+
+        For the file backend this streams row blocks so only one block is ever
+        resident; the result matches a plain strided slice exactly.
+        """
+        step = max(1, int(step))
+        r0, r1, c0, c1 = self._r0, self._r1, self._c0, self._c1
+        if self._arr is not None:
+            return np.asarray(self._arr[r0:r1:step, c0:c1:step, :], dtype=np.float64)
+        parts = []
+        for br0 in range(r0, r1, self._block_rows):
+            br1 = min(br0 + self._block_rows, r1)
+            block = np.asarray(self._img[br0:br1, c0:c1, :])
+            first = (-(br0 - r0)) % step        # first kept row within this block
+            parts.append(block[first::step, ::step, :])
+        return np.ascontiguousarray(np.concatenate(parts, axis=0), dtype=np.float64)
+
+    def pixel(self, r: int, c: int) -> np.ndarray:
+        """Full-resolution spectrum ``(bands,)`` float64 at region coords ``(r, c)``."""
+        src = self._arr if self._arr is not None else self._img
+        return np.asarray(src[self._r0 + int(r), self._c0 + int(c), :],
+                          dtype=np.float64).ravel()
+
+    def patch(self, r0: int, r1: int, c0: int, c1: int) -> np.ndarray:
+        """Full-resolution ``(r1-r0, c1-c0, bands)`` float64 patch at region coords."""
+        src = self._arr if self._arr is not None else self._img
+        return np.asarray(src[self._r0 + int(r0):self._r0 + int(r1),
+                              self._c0 + int(c0):self._c0 + int(c1), :],
+                          dtype=np.float64)
+
+
+def open_cube_reader(hdr_path: str, material: str = "sio2", crop=None,
+                     block_rows: int = 128) -> CubeReader:
+    """Open an ENVI cube as a memory-bounded :class:`CubeReader` (no pixel load)."""
+    img = spectral.open_image(hdr_path)
+    wavelengths, shutter, ceiling, label = _read_meta(img, hdr_path)
+    return CubeReader(img=img, wavelengths=wavelengths, shutter=shutter,
+                      ceiling=ceiling, label=label, material=material,
+                      crop=crop, block_rows=block_rows)
+
+
+def array_cube_reader(arr: np.ndarray, wavelengths=None, shutter: float = 1.0,
+                      ceiling: float = np.inf, label: str = "array",
+                      material: str = "sio2", crop=None) -> CubeReader:
+    """Wrap an in-memory cube in the :class:`CubeReader` interface (demo/tests)."""
+    return CubeReader(arr=arr, wavelengths=wavelengths, shutter=shutter,
+                      ceiling=ceiling, label=label, material=material, crop=crop)
 
 
 def save_envi_cube(hdr_path: str, data: np.ndarray,
@@ -92,15 +208,25 @@ def save_envi_cube(hdr_path: str, data: np.ndarray,
 
 
 @lru_cache(maxsize=8)
-def load_reference_spectrum(hdr_path: str):
+def load_reference_spectrum(hdr_path: str, block_rows: int = 128):
     """Whole-frame mean spectrum + shutter time for a white/dark reference cube.
 
-    Cached: the white/dark reference cubes are large (~750 MB) and reused for
-    every piece/scan, so we read and reduce each one only once per process.
+    The reference cubes are full-frame (several GB as float64), so this streams
+    contiguous row blocks and accumulates the sum rather than loading the whole
+    cube -- peak memory is one block. The result is exact (a mean over all
+    pixels), not a decimated estimate. Cached: each reference is read and reduced
+    only once per process.
     """
-    cube = load_cube(hdr_path)
-    mean_spectrum = cube.data.reshape(-1, cube.n_bands).mean(axis=0)
-    return mean_spectrum, cube.shutter
+    img = spectral.open_image(hdr_path)
+    _, shutter, _, _ = _read_meta(img, hdr_path)
+    rows, cols, bands = img.shape
+    acc = np.zeros(bands, dtype=np.float64)
+    for r0 in range(0, rows, max(1, int(block_rows))):
+        r1 = min(r0 + block_rows, rows)
+        block = np.asarray(img[r0:r1, :, :], dtype=np.float64)
+        acc += block.reshape(-1, bands).sum(axis=0)
+    mean_spectrum = acc / (rows * cols)
+    return mean_spectrum, shutter
 
 
 # --------------------------------------------------------------------------

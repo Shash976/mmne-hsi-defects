@@ -42,7 +42,7 @@ DEFAULT_OUT = os.path.join("out", "workflow", "explore")
 
 def main():
     p = argparse.ArgumentParser(description="Stage 4 exploratory visualization.")
-    p.add_argument("--dataset", nargs="+", default=["sio2_bare_si"],
+    p.add_argument("--dataset", nargs="+", default=["sio2_dish_white_20", "sio2_bare_si"],
                    choices=sorted(DATASETS),
                    help="One or more dataset presets (pass silicon + sio2 "
                         "together for the material comparison).")

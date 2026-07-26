@@ -17,8 +17,8 @@ semiconductor scan and writes the hierarchical Specimen → Piece → ROI tree p
 the sample database into the repo's `data/` folder.
 
 ```bash
-python -m hsi_workflow.run_organize                       # all four Si/SiO₂ presets
-python -m hsi_workflow.run_organize --datasets sio2_bare_si sio2_dish_black
+python -m hsi_workflow.run_organize                       # every live Si/SiO₂ preset
+python -m hsi_workflow.run_organize --datasets sio2_bare_si sio2_dish_white_20
 python -m hsi_workflow.run_organize --no-roi-cubes        # skip per-ROI cubes
 ```
 
@@ -86,7 +86,7 @@ meaningful. Pass **several presets** to get the control-vs-experimental
 comparison (silicon + SiO₂) in one figure:
 
 ```bash
-python -m hsi_workflow.run_explore --dataset sio2_bare_si sio2_dish_black
+python -m hsi_workflow.run_explore --dataset sio2_bare_si sio2_dish_white_20
 ```
 
 | Argument | Default | Meaning |
@@ -196,7 +196,7 @@ from hsi_workflow.pipeline import run_workflow
 
 cfg = WorkflowConfig()
 cfg.anomaly.methods = ["iforest", "lof", "mahalanobis"]
-res = run_workflow("sio2_dish_black", cfg, baseline="sio2_bare_si")
+res = run_workflow("sio2_dish_white_20", cfg, baseline="sio2_bare_si")
 
 for a in res.analyses:
     print(a.piece.piece_id, len(a.regions), a.cluster_metrics["silhouette"])

@@ -31,9 +31,9 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from .config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
-from .cube_io import Cube, iter_cube_paths, load_dataset_cube
+from .cube_io import Cube, iter_cube_paths, load_dataset_cube, load_reference_spectrum
 from .pieces import Piece, extract_pieces
-from .preprocessing import preprocess, saturation_mask
+from .preprocessing import preprocess, saturation_mask, calibrate_reflectance
 from .decomposition import fit_pca, PcaModel
 from .clustering import cluster, cluster_map, cluster_metrics, ClusterResult
 from .anomaly import (fit_detectors, MahalanobisDetector, anomaly_map,
@@ -49,34 +49,78 @@ from .rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
 # --------------------------------------------------------------------------
 
 def prepare_pieces(ds_cfg: DatasetConfig, wf: WorkflowConfig,
-                   verbose: bool = True) -> List[Piece]:
+                   verbose: bool = True,
+                   film_reference: Optional[np.ndarray] = None) -> List[Piece]:
     """Load every cube in a dataset, split into pieces, and preprocess each.
 
     Piece extraction runs on the raw cube (spectral-angle vs the dish background);
     each resulting piece is then calibrated/smoothed/SNV'd on its own so the
     returned :class:`Piece` objects carry *analysis-ready* spectra in ``.data``.
+
+    When ``wf.film.enabled`` and the dataset is SiO2, each piece's mask is further
+    narrowed to its SiO2 sub-region (bare silicon dropped), using ``film_reference``
+    as the bare-silicon control spectrum.
     """
     wf.validate()
     pieces: List[Piece] = []
+    n_cubes = 0
     for label, hdr in iter_cube_paths(ds_cfg):
+        n_cubes += 1
         cube = load_dataset_cube(hdr, ds_cfg)
         sat = saturation_mask(cube.data, cube.ceiling)
-        raw_pieces = extract_pieces(cube, wf.piece, valid_mask=~sat)
+        # Piece masks/bboxes may be found on calibrated reflectance (cfg.on_reflectance)
+        # so the spectral-angle background separation is not biased by uneven
+        # illumination; the *piece data* is still cropped from the raw cube so the
+        # per-piece preprocess() calibrates exactly once.
+        extract_cube = cube
+        if wf.piece.on_reflectance and ds_cfg.white_ref and ds_cfg.dark_ref:
+            white, sw = load_reference_spectrum(ds_cfg.white_ref)
+            dark, sd = load_reference_spectrum(ds_cfg.dark_ref)
+            refl = calibrate_reflectance(cube.data, cube.shutter, white, sw, dark, sd)
+            extract_cube = Cube(data=refl, wavelengths=cube.wavelengths, shutter=cube.shutter,
+                                ceiling=cube.ceiling, path=hdr, label=cube.label,
+                                material=cube.material)
+        raw_pieces = extract_pieces(extract_cube, wf.piece, valid_mask=~sat)
         if verbose:
             print(f"  {label}: {len(raw_pieces)} piece(s) "
                   f"[{cube.material}] from {cube.shape[0]}x{cube.shape[1]}")
         for rp in raw_pieces:
+            r0, r1, c0, c1 = rp.bbox
             piece_cube = Cube(
-                data=rp.data, wavelengths=cube.wavelengths, shutter=cube.shutter,
-                ceiling=cube.ceiling, path=hdr, label=rp.piece_id, material=cube.material,
+                data=cube.data[r0:r1, c0:c1, :].copy(), wavelengths=cube.wavelengths,
+                shutter=cube.shutter, ceiling=cube.ceiling, path=hdr,
+                label=rp.piece_id, material=cube.material,
             )
             pre = preprocess(piece_cube, wf.preprocess,
                              white_ref_hdr=ds_cfg.white_ref, dark_ref_hdr=ds_cfg.dark_ref)
-            pieces.append(Piece(
+            piece = Piece(
                 data=pre.data, mask=rp.mask, material=rp.material, piece_id=rp.piece_id,
                 source_label=rp.source_label, bbox=rp.bbox, wavelengths=cube.wavelengths,
                 reflectance_mean=pre.reflectance_mean, noise=pre.noise,
-            ))
+            )
+            # Stage 3.1b: narrow SiO2 pieces to their oxide sub-region (opt-in).
+            if wf.film.enabled and ds_cfg.material == "sio2":
+                from .film import extract_film
+                fm = extract_film(piece, wf.film, ref_spectrum=film_reference)
+                if fm.sio2_mask.any():
+                    piece.mask = fm.sio2_mask
+                elif verbose:
+                    print(f"    {piece.piece_id}: film mask empty, keeping full foreground")
+            pieces.append(piece)
+
+    # Fail fast with the actual cause. Downstream this would otherwise surface as
+    # an opaque "Found array with 0 sample(s)" from PCA, several stages later.
+    if not pieces:
+        if n_cubes == 0:
+            raise FileNotFoundError(
+                f"dataset {ds_cfg.name!r}: no cubes matched {ds_cfg.hdr_glob!r} in "
+                f"{ds_cfg.data_dir!r}. The raw scan may have been moved or retired."
+            )
+        raise ValueError(
+            f"dataset {ds_cfg.name!r}: {n_cubes} cube(s) loaded but piece extraction "
+            f"found none (min_area={wf.piece.min_area}). Retune PieceConfig with "
+            f"debug_masks.py --dataset {ds_cfg.name}."
+        )
     return pieces
 
 
@@ -217,9 +261,18 @@ def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
     if verbose:
         print(f"Baseline (normal) dataset: {baseline!r} [{baseline_cfg.material}]")
     baseline_pieces = prepare_pieces(baseline_cfg, wf, verbose=verbose)
+    # Stage 3.1b: a bare-silicon reference (from the baseline pieces we just
+    # prepared) drives SiO2-within-piece extraction on the target when enabled.
+    film_reference = None
+    if wf.film.enabled:
+        from .film import bare_si_reference_from_pieces
+        film_reference = bare_si_reference_from_pieces(baseline_pieces, wf)
+        if verbose:
+            print("Film extraction ON: narrowing SiO2 pieces to their oxide sub-region.")
     if verbose:
         print(f"Target dataset: {target!r} [{target_cfg.material}]")
-    target_pieces = prepare_pieces(target_cfg, wf, verbose=verbose)
+    target_pieces = prepare_pieces(target_cfg, wf, verbose=verbose,
+                                   film_reference=film_reference)
 
     # --- Stage 5: PCA on pooled foreground (baseline + target) ---
     pooled = pooled_foreground(baseline_pieces + target_pieces, wf.pca.max_fit_pixels, wf.pca.seed)

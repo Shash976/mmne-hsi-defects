@@ -49,7 +49,7 @@ def build_config(args) -> PreprocessConfig:
 
 def main():
     p = argparse.ArgumentParser(description="HSI workflow Step 9-10: preprocessing + optical density.")
-    p.add_argument("--dataset", default="lig", choices=sorted(DATASETS), help="Dataset preset.")
+    p.add_argument("--dataset", default="sio2_dish_white_20", choices=sorted(DATASETS), help="Dataset preset.")
     p.add_argument("--out", default=DEFAULT_OUT)
     p.add_argument("--od-method", default="none",
                    choices=["substrate", "white", "reference_scan", "none"],

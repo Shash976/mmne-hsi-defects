@@ -60,3 +60,13 @@ logs/
 # ENVI cube data companions (headers stay tracked)
 *.img
 *.raw
+
+# Per-ROI exports for the live datasets: ~7,180 tiny cubes (8x8x300) plus 8x8
+# thumbnails, fully regenerable from the piece cube + the crop coordinates in
+# roi_index.csv. What stays tracked is the metadata (roi_index.csv, meta.json,
+# samples.csv, manifest.json) and the per-piece _rgb.png previews.
+# The retired datasets' ROI exports (sio2_dish_black, sio2_dish_white_1) stay
+# tracked deliberately -- their raw scans were moved to <hsi_root>/sio2/legacy/,
+# so those files are no longer reproducible.
+data/organized/sio2_bare_si/*/rois/
+data/organized/sio2_dish_white_20/*/rois/

@@ -14,7 +14,7 @@
     60,
     300
   ],
-  "n_foreground_px": 3400,
-  "n_rois": 0,
+  "n_foreground_px": 3107,
+  "n_rois": 144,
   "radiometry": "reflectance"
 }

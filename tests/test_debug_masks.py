@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
+from dataclasses import replace
 import debug_masks
 from debug_masks import MaskTuner, synthetic_cube
 
@@ -97,3 +98,55 @@ def test_method_switch_resnaps_window():
     # so we check the window against the distance map directly.)
     window = (dist >= lo) & (dist <= hi)
     assert window.mean() > 0.05
+
+
+def test_band_contrast_sets_clim_without_recompute():
+    t = _tuner()
+    t._debouncer._recompute = lambda: (_ for _ in ()).throw(
+        AssertionError("contrast must not recompute"))
+    t.s_band_clip.set_val((0.2, 0.8))
+    t._on_band_clip(None)
+    lo, hi = t._im_band.get_clim()
+    assert lo < hi
+
+
+def test_max_dim_downsamples_working_cube():
+    cube, wl = synthetic_cube(rows=300, cols=300, bands=12, seed=3)
+    t = MaskTuner(cube, wl, "test", max_dim=100)
+    assert t.ds_factor >= 3
+    assert max(t.cube.shape[:2]) <= 100
+
+
+def test_background_bbox_and_flat_field_key_the_distance_cache():
+    t = _tuner()
+    t._distance()
+    n0 = len(t._dist_cache)
+    t.piece_cfg = replace(t.piece_cfg, background_bbox=(0, 8, 0, 8))
+    d1 = t._distance()
+    assert len(t._dist_cache) == n0 + 1        # new key cached, distance recomputed
+    assert d1.shape == t.cube.shape[:2]
+    t.piece_cfg = replace(t.piece_cfg, flat_field=True)
+    t._distance()
+    assert len(t._dist_cache) == n0 + 2
+
+
+def test_calibrate_check_noop_without_references():
+    t = _tuner()                                # synthetic cube has no white/dark
+    assert t.can_calibrate is False
+    t._on_check("calibrate")
+    assert t.use_calibrate is False
+
+
+def test_watershed_check_toggles_config():
+    t = _tuner()
+    assert t.piece_cfg.watershed_split is False
+    t._on_check("watershed")
+    assert t.piece_cfg.watershed_split is True
+
+
+def test_print_config_runs():
+    t = _tuner()
+
+    class E:
+        key = "p"
+    t._on_key(E())                              # must not raise
