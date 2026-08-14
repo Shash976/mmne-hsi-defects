@@ -20,6 +20,7 @@ without touching the stage implementations.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
@@ -152,6 +153,11 @@ DEFAULT_BASELINE = "sio2_bare_si"
 # tree and the sample database (``data/samples.csv``). The raw scans stay at
 # ``_HSI_ROOT`` (the acquisition archive); this tree is the analysis-ready copy.
 ORGANIZED_DATA_ROOT = "data"
+
+# Where run_baseline / pipeline.run_workflow cache the pooled silicon baseline
+# (mean/cov/pooled spectra + per-piece diagnostics) so the raw bare-Si scan
+# isn't re-extracted on every run_analyze call. See hsi_workflow/baseline.py.
+BASELINE_CACHE_ROOT = os.path.join("out", "workflow", "baseline")
 
 
 # --------------------------------------------------------------------------

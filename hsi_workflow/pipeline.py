@@ -30,7 +30,8 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from .config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE)
+from .config import (DatasetConfig, WorkflowConfig, DATASETS, DEFAULT_BASELINE,
+                     BASELINE_CACHE_ROOT)
 from .cube_io import Cube, iter_cube_paths, load_dataset_cube, load_reference_spectrum
 from .pieces import Piece, extract_pieces
 from .preprocessing import preprocess, saturation_mask, calibrate_reflectance
@@ -42,6 +43,7 @@ from .postprocess import clean_binary_map, label_regions
 from .regions import (characterize_regions, regions_to_table, RegionStats,
                       spectral_distance_map)
 from .rois import tile_rois, roi_feature_matrix, build_roi_table, Roi
+from .baseline import load_or_compute_baseline, subsample_spectra
 
 
 # --------------------------------------------------------------------------
@@ -246,12 +248,17 @@ def analyze_piece(piece: Piece, pca: PcaModel, detectors: Dict[str, object],
 # --------------------------------------------------------------------------
 
 def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
-                 baseline: str = DEFAULT_BASELINE, verbose: bool = True) -> WorkflowResult:
+                 baseline: str = DEFAULT_BASELINE, verbose: bool = True,
+                 force_baseline: bool = False) -> WorkflowResult:
     """Run the full pipeline: fit on the silicon baseline, analyze the target.
 
-    ``target``/``baseline`` are dataset preset names. Returns a
-    :class:`WorkflowResult` holding the shared PCA/detectors and one
-    :class:`PieceAnalysis` per target piece, plus the aggregated ROI table.
+    ``target``/``baseline`` are dataset preset names. The silicon baseline is
+    loaded from ``BASELINE_CACHE_ROOT`` (see ``hsi_workflow.baseline``) when a
+    cache valid for ``baseline``/``wf.piece``/``wf.preprocess`` exists;
+    otherwise it's computed fresh from the raw scan and cached for next time.
+    ``force_baseline=True`` always recomputes. Returns a :class:`WorkflowResult`
+    holding the shared PCA/detectors and one :class:`PieceAnalysis` per target
+    piece, plus the aggregated ROI table.
     """
     wf = wf or WorkflowConfig()
     wf.validate()
@@ -260,13 +267,14 @@ def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
 
     if verbose:
         print(f"Baseline (normal) dataset: {baseline!r} [{baseline_cfg.material}]")
-    baseline_pieces = prepare_pieces(baseline_cfg, wf, verbose=verbose)
-    # Stage 3.1b: a bare-silicon reference (from the baseline pieces we just
-    # prepared) drives SiO2-within-piece extraction on the target when enabled.
+    sb = load_or_compute_baseline(baseline_cfg, wf, BASELINE_CACHE_ROOT,
+                                  force=force_baseline, verbose=verbose)
+
+    # Stage 3.1b: the cached baseline's pooled mean is the bare-silicon
+    # reference for narrowing SiO2 pieces to their oxide sub-region.
     film_reference = None
     if wf.film.enabled:
-        from .film import bare_si_reference_from_pieces
-        film_reference = bare_si_reference_from_pieces(baseline_pieces, wf)
+        film_reference = sb.mean_spectrum
         if verbose:
             print("Film extraction ON: narrowing SiO2 pieces to their oxide sub-region.")
     if verbose:
@@ -274,8 +282,13 @@ def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
     target_pieces = prepare_pieces(target_cfg, wf, verbose=verbose,
                                    film_reference=film_reference)
 
-    # --- Stage 5: PCA on pooled foreground (baseline + target) ---
-    pooled = pooled_foreground(baseline_pieces + target_pieces, wf.pca.max_fit_pixels, wf.pca.seed)
+    # --- Stage 5: PCA on pooled foreground (baseline cache + target) ---
+    # Split the fit cap evenly between the two populations (the cached baseline
+    # sample is already a subsample of every bare-Si piece; the target side is
+    # pooled fresh per piece as before).
+    baseline_pool = subsample_spectra(sb.pooled_spectra, wf.pca.max_fit_pixels // 2, wf.pca.seed)
+    target_pool = pooled_foreground(target_pieces, wf.pca.max_fit_pixels // 2, wf.pca.seed)
+    pooled = np.vstack([baseline_pool, target_pool])
     pca = fit_pca(pooled, wf.pca)
     if verbose:
         evr = pca.explained_variance_ratio
@@ -283,9 +296,9 @@ def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
 
     # --- Stage 8: fit anomaly detectors on the "normal" population ---
     # fit_on="self" -> the target's own majority (finds localized anomalies within
-    # the film); fit_on="baseline" -> the external silicon baseline (material
+    # the film); fit_on="baseline" -> the cached silicon baseline (material
     # contrast). Thresholds come from the same population the detectors were fit on.
-    baseline_fg = pooled_foreground(baseline_pieces, wf.anomaly.max_fit_pixels, wf.anomaly.seed)
+    baseline_fg = subsample_spectra(sb.pooled_spectra, wf.anomaly.max_fit_pixels, wf.anomaly.seed)
     if wf.anomaly.fit_on == "baseline":
         normal_fg = baseline_fg
     else:
@@ -297,8 +310,8 @@ def run_workflow(target: str, wf: Optional[WorkflowConfig] = None,
     if verbose:
         print(f"Anomaly detectors fit on {wf.anomaly.fit_on!r} population "
               f"({normal_fg.shape[0]} spectra); methods={wf.anomaly.methods}")
-    # Spectral-space Mahalanobis on silicon, always, for the region
-    # "distance from silicon baseline" feature.
+    # Spectral-space Mahalanobis on the cached baseline sample, always, for the
+    # region "distance from silicon baseline" feature.
     baseline_spectral = MahalanobisDetector().fit(baseline_fg)
 
     # --- Per-target-piece analysis ---

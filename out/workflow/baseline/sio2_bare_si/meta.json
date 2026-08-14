@@ -1,0 +1,42 @@
+{
+  "dataset": "sio2_bare_si",
+  "computed_at": "2026-08-14T05:25:28.770788+00:00",
+  "config_snapshot": {
+    "piece": {
+      "method": "sam",
+      "border_width": 8,
+      "threshold": "otsu",
+      "threshold_percentile": 80.0,
+      "chi2_quantile": 0.999,
+      "open_iter": 2,
+      "close_iter": 6,
+      "fill_holes": true,
+      "min_area": 1000,
+      "erode_iter": 1,
+      "watershed_split": false,
+      "seed": 0,
+      "background_bbox": null,
+      "flat_field": false,
+      "flat_field_sigma": 30.0,
+      "on_reflectance": false
+    },
+    "preprocess": {
+      "register": false,
+      "background": "dark",
+      "calibrate": true,
+      "smooth": "savgol",
+      "sg_window": 11,
+      "sg_polyorder": 2,
+      "baseline": "none",
+      "baseline_order": 2,
+      "normalize": "snv",
+      "od_method": "none",
+      "eps": 1e-06,
+      "invert_foreground": false,
+      "seed": 0
+    }
+  },
+  "n_pieces": 9,
+  "n_pixels_total": 53862,
+  "n_pixels_pooled_cache": 53862
+}

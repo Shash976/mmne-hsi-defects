@@ -115,6 +115,9 @@ def main():
     p = argparse.ArgumentParser(description="Stages 5-11 anomaly analysis.")
     p.add_argument("--target", default="sio2_dish_white_20", choices=sorted(DATASETS))
     p.add_argument("--baseline", default=DEFAULT_BASELINE, choices=sorted(DATASETS))
+    p.add_argument("--force-baseline", action="store_true",
+                   help="Recompute the silicon baseline from the raw bare-Si scan "
+                        "even if a valid cache exists under out/workflow/baseline/<baseline>/.")
     p.add_argument("--out", default=DEFAULT_OUT)
     p.add_argument("--erode", type=int, default=PieceConfig().erode_iter,
                    help="Shrink each piece's analysis mask by N px before ROI "
@@ -149,7 +152,7 @@ def main():
     out_dir = os.path.join(args.out, args.target)
     os.makedirs(out_dir, exist_ok=True)
 
-    res = run_workflow(args.target, wf, baseline=args.baseline)
+    res = run_workflow(args.target, wf, baseline=args.baseline, force_baseline=args.force_baseline)
     if not res.analyses:
         print("No target pieces analyzed.")
         return
