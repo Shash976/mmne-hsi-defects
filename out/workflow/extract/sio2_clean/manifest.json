@@ -1,0 +1,109 @@
+{
+  "dataset": "sio2_clean",
+  "material": "sio2",
+  "radiometry": "reflectance",
+  "n_pieces": 5,
+  "n_rois": 1554,
+  "pieces": [
+    {
+      "piece_id": "Clean 8_7_p01",
+      "source_label": "Clean 8_7",
+      "material": "sio2",
+      "dataset": "sio2_clean",
+      "bbox_in_scan": [
+        249,
+        360,
+        325,
+        438
+      ],
+      "shape": [
+        111,
+        113,
+        300
+      ],
+      "n_foreground_px": 7122,
+      "n_rois": 388,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Clean 8_7_p02",
+      "source_label": "Clean 8_7",
+      "material": "sio2",
+      "dataset": "sio2_clean",
+      "bbox_in_scan": [
+        379,
+        469,
+        370,
+        509
+      ],
+      "shape": [
+        90,
+        139,
+        300
+      ],
+      "n_foreground_px": 7072,
+      "n_rois": 382,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Clean 8_7_p03",
+      "source_label": "Clean 8_7",
+      "material": "sio2",
+      "dataset": "sio2_clean",
+      "bbox_in_scan": [
+        485,
+        546,
+        473,
+        577
+      ],
+      "shape": [
+        61,
+        104,
+        300
+      ],
+      "n_foreground_px": 5500,
+      "n_rois": 299,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Clean 8_7_p04",
+      "source_label": "Clean 8_7",
+      "material": "sio2",
+      "dataset": "sio2_clean",
+      "bbox_in_scan": [
+        351,
+        464,
+        605,
+        689
+      ],
+      "shape": [
+        113,
+        84,
+        300
+      ],
+      "n_foreground_px": 4963,
+      "n_rois": 264,
+      "radiometry": "reflectance"
+    },
+    {
+      "piece_id": "Clean 8_7_p05",
+      "source_label": "Clean 8_7",
+      "material": "sio2",
+      "dataset": "sio2_clean",
+      "bbox_in_scan": [
+        194,
+        270,
+        477,
+        594
+      ],
+      "shape": [
+        76,
+        117,
+        300
+      ],
+      "n_foreground_px": 4314,
+      "n_rois": 221,
+      "radiometry": "reflectance"
+    }
+  ]
+}

@@ -101,6 +101,17 @@ SIO2_DISH_WHITE_20 = DatasetConfig(
     background="white",
 )
 
+SIO2_CLEAN = DatasetConfig(
+    name="sio2_clean",
+    data_dir=_SIO2_DIR,
+    hdr_glob="Clean 8_7.bil.hdr",
+    pair_regex=None,
+    white_ref=_WHITE_REF,
+    dark_ref=_DARK_REF,
+    material="sio2",
+    background="white",
+)   
+
 SIO2_DISH_BLACK = DatasetConfig(
     name="sio2_dish_black",
     data_dir=_SIO2_DIR,
@@ -124,7 +135,7 @@ SIO2_DISH_WHITE_1 = DatasetConfig(
 )
 
 DATASETS = {cfg.name: cfg for cfg in (
-    LIG, SIO2_BARE_SI, SIO2_DISH_WHITE_20, SIO2_DISH_BLACK, SIO2_DISH_WHITE_1,
+    LIG, SIO2_BARE_SI, SIO2_DISH_WHITE_20, SIO2_CLEAN, SIO2_DISH_BLACK, SIO2_DISH_WHITE_1,
 )}
 # Convenience alias so the CLI/tuners accept the shorthand the user says out loud
 # ("sio2_20"). It resolves to the same frozen config (name stays

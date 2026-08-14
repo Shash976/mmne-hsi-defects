@@ -1,0 +1,20 @@
+{
+  "piece_id": "Clean 8_7_p03",
+  "source_label": "Clean 8_7",
+  "material": "sio2",
+  "dataset": "sio2_clean",
+  "bbox_in_scan": [
+    485,
+    546,
+    473,
+    577
+  ],
+  "shape": [
+    61,
+    104,
+    300
+  ],
+  "n_foreground_px": 5500,
+  "n_rois": 299,
+  "radiometry": "reflectance"
+}
