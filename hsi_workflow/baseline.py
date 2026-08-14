@@ -209,3 +209,72 @@ def baseline_cache_valid(baseline: SiliconBaseline, ds_cfg: DatasetConfig,
     if baseline.dataset != ds_cfg.name:
         return False
     return baseline.config_snapshot == _config_snapshot(wf)
+
+
+# --------------------------------------------------------------------------
+# Orchestration (touches the real bare-Si scan)
+# --------------------------------------------------------------------------
+
+def compute_silicon_baseline(ds_cfg: DatasetConfig, wf: WorkflowConfig,
+                             verbose: bool = True) -> Tuple[SiliconBaseline, List[Piece]]:
+    """Extract + preprocess ``ds_cfg`` fresh and pool it into a baseline.
+
+    Imports ``prepare_pieces`` lazily to avoid a circular import: ``pipeline.py``
+    imports this module at the top level (for ``load_or_compute_baseline``), so
+    this module can't import ``pipeline`` at the top level too. Same trick
+    already used by ``film.bare_si_reference_from_pieces``.
+    """
+    from .pipeline import prepare_pieces
+    pieces = prepare_pieces(ds_cfg, wf, verbose=verbose)
+    return baseline_from_pieces(ds_cfg.name, pieces, wf), pieces
+
+
+def load_or_compute_baseline(ds_cfg: DatasetConfig, wf: WorkflowConfig, cache_root: str,
+                             force: bool = False, verbose: bool = True) -> SiliconBaseline:
+    """The entry point ``pipeline.run_workflow`` uses.
+
+    Loads a valid cache when present; otherwise recomputes from the raw scan,
+    saves the cache + per-piece diagnostics, and returns the fresh baseline.
+    """
+    out_dir = os.path.join(cache_root, ds_cfg.name)
+    if not force:
+        cached = load_silicon_baseline(out_dir)
+        if cached is not None and baseline_cache_valid(cached, ds_cfg, wf):
+            if verbose:
+                print(f"Silicon baseline ({ds_cfg.name}): loaded from cache at {out_dir}")
+            return cached
+
+    if verbose:
+        reason = "forced" if force else "no valid cache"
+        print(f"Silicon baseline ({ds_cfg.name}): computing fresh ({reason}) ...")
+    baseline, pieces = compute_silicon_baseline(ds_cfg, wf, verbose=verbose)
+    save_silicon_baseline(baseline, out_dir)
+    save_piece_diagnostics(baseline, pieces, out_dir)
+    if verbose:
+        print(f"Silicon baseline ({ds_cfg.name}): cached to {out_dir}")
+    return baseline
+
+
+def save_piece_diagnostics(baseline: SiliconBaseline, pieces: List[Piece], out_dir: str) -> None:
+    """Per piece: mean spectrum +/-1 std vs the pooled baseline mean -- the
+    visual debug check for whether a piece's extraction looks right."""
+    fig_dir = os.path.join(out_dir, "figures")
+    os.makedirs(fig_dir, exist_ok=True)
+    wl = baseline.wavelengths
+    for p in pieces:
+        fg = p.foreground_spectra()
+        piece_mean = fg.mean(axis=0)
+        piece_std = fg.std(axis=0)
+        plt.figure(figsize=(7, 4))
+        plt.plot(wl, baseline.mean_spectrum, color="tab:gray", lw=1.5,
+                 label="pooled baseline mean")
+        plt.plot(wl, piece_mean, color="tab:blue", lw=1.2, label=f"{p.piece_id} mean")
+        plt.fill_between(wl, piece_mean - piece_std, piece_mean + piece_std,
+                         color="tab:blue", alpha=0.2, label="+/-1 std")
+        plt.xlabel("wavelength (nm)")
+        plt.ylabel("analysis-space reflectance")
+        plt.title(f"{p.piece_id} vs pooled silicon baseline")
+        plt.legend(fontsize=8)
+        plt.tight_layout()
+        plt.savefig(os.path.join(fig_dir, f"{p.piece_id}_baseline.png"), dpi=140)
+        plt.close()

@@ -8,6 +8,7 @@ from hsi_workflow.pieces import Piece
 from hsi_workflow.baseline import (
     subsample_spectra, baseline_from_pieces,
     save_silicon_baseline, load_silicon_baseline, baseline_cache_valid,
+    load_or_compute_baseline, save_piece_diagnostics,
 )
 
 
@@ -130,3 +131,70 @@ def test_baseline_cache_valid_survives_tuple_config_field(tmp_path):
     save_silicon_baseline(sb, out_dir)
     loaded = load_silicon_baseline(out_dir)
     assert baseline_cache_valid(loaded, DATASETS["sio2_bare_si"], wf) is True
+
+
+def test_save_piece_diagnostics_creates_figures(tmp_path):
+    pieces = [_make_silicon_piece("p01", seed=0), _make_silicon_piece("p02", seed=1)]
+    wf = WorkflowConfig()
+    sb = baseline_from_pieces("sio2_bare_si", pieces, wf)
+    out_dir = str(tmp_path / "sio2_bare_si")
+    save_piece_diagnostics(sb, pieces, out_dir)
+    for p in pieces:
+        assert os.path.exists(os.path.join(out_dir, "figures", f"{p.piece_id}_baseline.png"))
+
+
+def test_load_or_compute_baseline_uses_cache_on_second_call(tmp_path, monkeypatch):
+    calls = {"n": 0}
+    pieces = [_make_silicon_piece("p01", seed=0)]
+    wf = WorkflowConfig()
+    ds_cfg = DATASETS["sio2_bare_si"]
+
+    def fake_compute(ds_cfg_, wf_, verbose=True):
+        calls["n"] += 1
+        return baseline_from_pieces(ds_cfg_.name, pieces, wf_), pieces
+
+    monkeypatch.setattr("hsi_workflow.baseline.compute_silicon_baseline", fake_compute)
+    cache_root = str(tmp_path)
+
+    sb1 = load_or_compute_baseline(ds_cfg, wf, cache_root, verbose=False)
+    assert calls["n"] == 1
+    sb2 = load_or_compute_baseline(ds_cfg, wf, cache_root, verbose=False)
+    assert calls["n"] == 1   # cache hit, no recompute
+    np.testing.assert_allclose(sb1.mean_spectrum, sb2.mean_spectrum)
+
+
+def test_load_or_compute_baseline_force_recomputes(tmp_path, monkeypatch):
+    calls = {"n": 0}
+    pieces = [_make_silicon_piece("p01", seed=0)]
+    wf = WorkflowConfig()
+    ds_cfg = DATASETS["sio2_bare_si"]
+
+    def fake_compute(ds_cfg_, wf_, verbose=True):
+        calls["n"] += 1
+        return baseline_from_pieces(ds_cfg_.name, pieces, wf_), pieces
+
+    monkeypatch.setattr("hsi_workflow.baseline.compute_silicon_baseline", fake_compute)
+    cache_root = str(tmp_path)
+
+    load_or_compute_baseline(ds_cfg, wf, cache_root, verbose=False)
+    load_or_compute_baseline(ds_cfg, wf, cache_root, force=True, verbose=False)
+    assert calls["n"] == 2
+
+
+def test_load_or_compute_baseline_recomputes_on_config_change(tmp_path, monkeypatch):
+    calls = {"n": 0}
+    pieces = [_make_silicon_piece("p01", seed=0)]
+    ds_cfg = DATASETS["sio2_bare_si"]
+
+    def fake_compute(ds_cfg_, wf_, verbose=True):
+        calls["n"] += 1
+        return baseline_from_pieces(ds_cfg_.name, pieces, wf_), pieces
+
+    monkeypatch.setattr("hsi_workflow.baseline.compute_silicon_baseline", fake_compute)
+    cache_root = str(tmp_path)
+
+    load_or_compute_baseline(ds_cfg, WorkflowConfig(), cache_root, verbose=False)
+    wf2 = WorkflowConfig()
+    wf2.piece.min_area = wf2.piece.min_area + 500
+    load_or_compute_baseline(ds_cfg, wf2, cache_root, verbose=False)
+    assert calls["n"] == 2
