@@ -11,6 +11,9 @@ pip-wheel-metadata/
 .idea/
 .vscode/
 
+# Claude Code worktrees/scratch (nested git worktrees, session state)
+.claude/
+
 # Testing / linting / type checking
 .pytest_cache/
 .mypy_cache/
