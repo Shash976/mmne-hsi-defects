@@ -1,9 +1,14 @@
+import os
+
 import numpy as np
 import pytest
 
-from hsi_workflow.config import WorkflowConfig
+from hsi_workflow.config import DATASETS, WorkflowConfig
 from hsi_workflow.pieces import Piece
-from hsi_workflow.baseline import subsample_spectra, baseline_from_pieces
+from hsi_workflow.baseline import (
+    subsample_spectra, baseline_from_pieces,
+    save_silicon_baseline, load_silicon_baseline, baseline_cache_valid,
+)
 
 
 def _make_silicon_piece(piece_id, seed, rows=20, cols=20, bands=15, amp=0.05, freq=150.0):
@@ -73,3 +78,55 @@ def test_piece_stats_fields():
     assert ps.n_px == int(piece.mask.sum())
     assert ps.snr == pytest.approx(12.5)
     assert ps.sam_from_global == pytest.approx(0.0, abs=2e-6)  # only piece == global mean
+
+
+def test_save_and_load_round_trip(tmp_path):
+    pieces = [_make_silicon_piece("p01", seed=0), _make_silicon_piece("p02", seed=1)]
+    wf = WorkflowConfig()
+    sb = baseline_from_pieces("sio2_bare_si", pieces, wf)
+    out_dir = str(tmp_path / "sio2_bare_si")
+    save_silicon_baseline(sb, out_dir)
+    loaded = load_silicon_baseline(out_dir)
+    assert loaded is not None
+    assert loaded.dataset == sb.dataset
+    np.testing.assert_allclose(loaded.mean_spectrum, sb.mean_spectrum)
+    np.testing.assert_allclose(loaded.cov, sb.cov)
+    np.testing.assert_allclose(loaded.pooled_spectra, sb.pooled_spectra)
+    assert len(loaded.piece_stats) == len(sb.piece_stats)
+    assert loaded.piece_stats[0].piece_id == sb.piece_stats[0].piece_id
+    assert loaded.piece_stats[0].flag_outlier == sb.piece_stats[0].flag_outlier
+    assert baseline_cache_valid(loaded, DATASETS["sio2_bare_si"], wf)
+
+
+def test_load_silicon_baseline_missing_returns_none(tmp_path):
+    assert load_silicon_baseline(str(tmp_path / "nope")) is None
+
+
+def test_baseline_cache_valid_detects_config_and_dataset_change(tmp_path):
+    pieces = [_make_silicon_piece("p01", seed=0)]
+    wf = WorkflowConfig()
+    sb = baseline_from_pieces("sio2_bare_si", pieces, wf)
+    out_dir = str(tmp_path / "sio2_bare_si")
+    save_silicon_baseline(sb, out_dir)
+    loaded = load_silicon_baseline(out_dir)
+    ds_cfg = DATASETS["sio2_bare_si"]
+    assert baseline_cache_valid(loaded, ds_cfg, wf) is True
+
+    wf2 = WorkflowConfig()
+    wf2.piece.min_area = wf2.piece.min_area + 500
+    assert baseline_cache_valid(loaded, ds_cfg, wf2) is False
+
+    assert baseline_cache_valid(loaded, DATASETS["sio2_dish_white_20"], wf) is False
+
+
+def test_baseline_cache_valid_survives_tuple_config_field(tmp_path):
+    """PieceConfig.background_bbox is a tuple; JSON round-trips it to a list --
+    cache validity must not be fooled by that type change."""
+    pieces = [_make_silicon_piece("p01", seed=0)]
+    wf = WorkflowConfig()
+    wf.piece.background_bbox = (1, 2, 3, 4)
+    sb = baseline_from_pieces("sio2_bare_si", pieces, wf)
+    out_dir = str(tmp_path / "sio2_bare_si")
+    save_silicon_baseline(sb, out_dir)
+    loaded = load_silicon_baseline(out_dir)
+    assert baseline_cache_valid(loaded, DATASETS["sio2_bare_si"], wf) is True

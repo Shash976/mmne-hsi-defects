@@ -132,3 +132,80 @@ def baseline_from_pieces(dataset_name: str, pieces: List[Piece], wf: WorkflowCon
         piece_stats=piece_stats, config_snapshot=_config_snapshot(wf),
         computed_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+# --------------------------------------------------------------------------
+# Disk cache
+# --------------------------------------------------------------------------
+
+def save_silicon_baseline(baseline: SiliconBaseline, out_dir: str) -> None:
+    """Write the baseline to ``out_dir`` as ``baseline.npz`` + ``meta.json`` +
+    ``piece_stats.csv``. Writes go through a temp path + ``os.replace`` so a
+    killed process never leaves a partially-written cache that looks valid."""
+    os.makedirs(out_dir, exist_ok=True)
+
+    npz_path = os.path.join(out_dir, "baseline.npz")
+    tmp_npz = npz_path + ".tmp"
+    # Pass an open file handle (not a bare path) so np.savez doesn't append
+    # its own ".npz" suffix to our ".tmp" temp name.
+    with open(tmp_npz, "wb") as f:
+        np.savez(f, wavelengths=baseline.wavelengths, mean_spectrum=baseline.mean_spectrum,
+                 std_spectrum=baseline.std_spectrum, cov=baseline.cov,
+                 pooled_spectra=baseline.pooled_spectra)
+    os.replace(tmp_npz, npz_path)
+
+    csv_path = os.path.join(out_dir, "piece_stats.csv")
+    tmp_csv = csv_path + ".tmp"
+    pd.DataFrame([asdict(ps) for ps in baseline.piece_stats]).to_csv(tmp_csv, index=False)
+    os.replace(tmp_csv, csv_path)
+
+    meta = {
+        "dataset": baseline.dataset,
+        "computed_at": baseline.computed_at,
+        "config_snapshot": baseline.config_snapshot,
+        "n_pieces": len(baseline.piece_stats),
+        "n_pixels_total": int(sum(ps.n_px for ps in baseline.piece_stats)),
+        "n_pixels_pooled_cache": int(baseline.pooled_spectra.shape[0]),
+    }
+    meta_path = os.path.join(out_dir, "meta.json")
+    tmp_meta = meta_path + ".tmp"
+    with open(tmp_meta, "w") as f:
+        json.dump(meta, f, indent=2)
+    os.replace(tmp_meta, meta_path)
+
+
+def load_silicon_baseline(out_dir: str) -> Optional[SiliconBaseline]:
+    """Load a cached baseline, or ``None`` if missing/unreadable (never raises)."""
+    npz_path = os.path.join(out_dir, "baseline.npz")
+    meta_path = os.path.join(out_dir, "meta.json")
+    csv_path = os.path.join(out_dir, "piece_stats.csv")
+    if not (os.path.exists(npz_path) and os.path.exists(meta_path) and os.path.exists(csv_path)):
+        return None
+    try:
+        with np.load(npz_path) as z:
+            wavelengths = z["wavelengths"]
+            mean_spectrum = z["mean_spectrum"]
+            std_spectrum = z["std_spectrum"]
+            cov = z["cov"]
+            pooled_spectra = z["pooled_spectra"]
+        with open(meta_path) as f:
+            meta = json.load(f)
+        df = pd.read_csv(csv_path)
+        piece_stats = [PieceBaselineStats(**row) for row in df.to_dict(orient="records")]
+        return SiliconBaseline(
+            dataset=meta["dataset"], wavelengths=wavelengths, mean_spectrum=mean_spectrum,
+            std_spectrum=std_spectrum, cov=cov, pooled_spectra=pooled_spectra,
+            piece_stats=piece_stats, config_snapshot=meta["config_snapshot"],
+            computed_at=meta["computed_at"],
+        )
+    except (OSError, KeyError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def baseline_cache_valid(baseline: SiliconBaseline, ds_cfg: DatasetConfig,
+                         wf: WorkflowConfig) -> bool:
+    """A cached baseline is valid for ``ds_cfg``/``wf`` iff the dataset name and
+    the extraction/preprocessing config snapshot both match exactly."""
+    if baseline.dataset != ds_cfg.name:
+        return False
+    return baseline.config_snapshot == _config_snapshot(wf)
