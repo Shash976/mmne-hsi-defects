@@ -5,7 +5,7 @@ Unsupervised spectral-anomaly screening of SiO₂ thin-film pieces (no defect la
 ## Run configuration
 
 - Target: `sio2_dish_white_20` · Baseline: `sio2_bare_si`
-- PCA components: 3 — explained variance: PC1=82.4%, PC2=6.7%, PC3=3.4%
+- PCA components: 3 — explained variance: PC1=82.5%, PC2=6.7%, PC3=3.5%
 - Clustering: `kmeans` (k=4)
 - Anomaly detectors: ['iforest', 'mahalanobis'] · fit_on=`self` · flag percentile 97.5
 - Postprocessing: median=3, opening=1, min_component=25
@@ -16,27 +16,27 @@ Sample inventory: [`data\samples.csv`](data/samples.csv)
 
 | piece | silhouette | clusters | anomalous | regions | largest (px) | edge share | median Si-dist |
 |---|---|---|---|---|---|---|---|
-| sio2 all 20 dish white_p01 | 0.47 | 4 | 1.84% | 4 | 232 | 11% | 213.9 |
-| sio2 all 20 dish white_p02 | 0.50 | 4 | 0.00% | 0 | 0 | nan | 170.8 |
-| sio2 all 20 dish white_p03 | 0.38 | 4 | 3.26% | 2 | 170 | 0% | 248.1 |
-| sio2 all 20 dish white_p04 | 0.38 | 4 | 0.00% | 0 | 0 | nan | 234.6 |
-| sio2 all 20 dish white_p05 | 0.44 | 4 | 0.00% | 0 | 0 | nan | 208.0 |
-| sio2 all 20 dish white_p06 | 0.53 | 4 | 0.00% | 0 | 0 | nan | 170.3 |
-| sio2 all 20 dish white_p07 | 0.35 | 4 | 0.00% | 0 | 0 | nan | 281.1 |
-| sio2 all 20 dish white_p08 | 0.39 | 4 | 4.46% | 1 | 235 | 0% | 504.9 |
-| sio2 all 20 dish white_p09 | 0.40 | 4 | 0.00% | 0 | 0 | nan | 190.7 |
-| sio2 all 20 dish white_p10 | 0.41 | 4 | 0.00% | 0 | 0 | nan | 234.3 |
-| sio2 all 20 dish white_p11 | 0.40 | 4 | 0.00% | 0 | 0 | nan | 212.2 |
-| sio2 all 20 dish white_p12 | 0.40 | 4 | 4.86% | 1 | 95 | 61% | 403.3 |
-| sio2 all 20 dish white_p13 | 0.49 | 4 | 3.74% | 1 | 69 | 99% | 191.0 |
-| sio2 all 20 dish white_p14 | 0.48 | 4 | 0.00% | 0 | 0 | nan | 231.6 |
-| sio2 all 20 dish white_p15 | 0.64 | 4 | 0.00% | 0 | 0 | nan | 214.4 |
+| sio2 all 20 dish white_p01 | 0.47 | 4 | 1.84% | 4 | 227 | 11% | 221.3 |
+| sio2 all 20 dish white_p02 | 0.50 | 4 | 0.00% | 0 | 0 | nan | 174.1 |
+| sio2 all 20 dish white_p03 | 0.38 | 4 | 3.09% | 2 | 183 | 0% | 260.0 |
+| sio2 all 20 dish white_p04 | 0.38 | 4 | 0.00% | 0 | 0 | nan | 241.6 |
+| sio2 all 20 dish white_p05 | 0.44 | 4 | 0.00% | 0 | 0 | nan | 215.9 |
+| sio2 all 20 dish white_p06 | 0.53 | 4 | 0.00% | 0 | 0 | nan | 177.3 |
+| sio2 all 20 dish white_p07 | 0.35 | 4 | 0.00% | 0 | 0 | nan | 287.8 |
+| sio2 all 20 dish white_p08 | 0.39 | 4 | 5.17% | 1 | 272 | 0% | 537.5 |
+| sio2 all 20 dish white_p09 | 0.40 | 4 | 0.00% | 0 | 0 | nan | 196.6 |
+| sio2 all 20 dish white_p10 | 0.41 | 4 | 0.00% | 0 | 0 | nan | 239.7 |
+| sio2 all 20 dish white_p11 | 0.41 | 4 | 0.00% | 0 | 0 | nan | 219.5 |
+| sio2 all 20 dish white_p12 | 0.40 | 4 | 4.96% | 1 | 97 | 67% | 413.9 |
+| sio2 all 20 dish white_p13 | 0.50 | 4 | 3.79% | 1 | 70 | 99% | 196.0 |
+| sio2 all 20 dish white_p14 | 0.48 | 4 | 0.00% | 0 | 0 | nan | 237.1 |
+| sio2 all 20 dish white_p15 | 0.64 | 4 | 0.00% | 0 | 0 | nan | 220.2 |
 
 ## The document's questions
 
-- **Localized?** Mean anomalous fraction across pieces is 1.21% (9 region(s) total). Small and localized — consistent with the expected 2–10% band.
+- **Localized?** Mean anomalous fraction across pieces is 1.26% (9 region(s) total). Small and localized — consistent with the expected 2–10% band.
 - **Repeated across pieces?** 5/15 pieces have at least one flagged region. Recurring regions in similar positions across pieces suggest a process signature; isolated ones suggest local events.
-- **Near edges?** On average 34% of flagged pixels lie within 5 px of the piece boundary. Not edge-dominated.
+- **Near edges?** On average 35% of flagged pixels lie within 5 px of the piece boundary. Not edge-dominated.
 - **Random?** Compare the flagged-region overlay against the cluster map in each `<piece>_analysis.png`: regions that respect cluster boundaries are spectrally coherent populations; scattered speckle that survives postprocessing suggests noise.
 
 ## Silicon baseline vs processed film
