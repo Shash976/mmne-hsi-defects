@@ -5,7 +5,7 @@ hyperspectral images — **without** any defect labels, reference spectra, or pr
 knowledge of where problems are. Bare silicon acts as a "what normal looks like"
 baseline; processed SiO₂ pieces are screened for anomalies.
 
-> We are **not** detecting defects. We are detecting **spectral anomalies** —
+> We are detecting **spectral anomalies** —
 > regions worth a closer look with SEM/AFM/Raman later.
 
 ---
