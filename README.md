@@ -10,8 +10,6 @@ baseline; processed SiO₂ pieces are screened for anomalies.
 
 ---
 
-## 🧒 The dumbed-down version
-
 Imagine you photograph a dozen wafer chips, but instead of a normal camera that
 sees Red/Green/Blue, your camera measures **300 colors** at every pixel. Each
 pixel becomes a little "spectral fingerprint."
